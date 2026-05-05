@@ -10,8 +10,9 @@ import pandas as pd
 # Configuration
 # ============================================================
 
-video_id = "15"
-VIDEO_PATH = f"videos/ANU-25-summer-6_20260404_{video_id}0000.mp4"
+VIDEO_DIR = Path("videos")
+VIDEO_PATH = "input.mp4"
+BATCH_ALL_VIDEOS = True
 
 ROI_X1, ROI_Y1, ROI_X2, ROI_Y2 = 1300, 1000, 1640, 1232
 ENT_X1, ENT_Y1, ENT_X2, ENT_Y2 = 1400, 1200, 1600, 1232
@@ -35,10 +36,9 @@ OUT_BEE_EVENT_FLUX_UNIT = 100.0
 WINDOW_SEC = 3.0
 
 OUTPUT_DIR = Path("bee_count_output")
-OUTPUT_PREVIEW_VIDEO = OUTPUT_DIR / f"entrance_count_preview_{video_id}.mp4"
-OUTPUT_FRAME_CSV = OUTPUT_DIR / f"entrance_flux_frame_{video_id}.csv"
-OUTPUT_EVENT_CSV = OUTPUT_DIR / f"entrance_events_{video_id}.csv"
-OUTPUT_WINDOW_CSV = OUTPUT_DIR / f"entrance_count_3sec_{video_id}.csv"
+OUTPUT_BATCH_VIDEO_SUMMARY_CSV = OUTPUT_DIR / "entrance_video_summary.csv"
+OUTPUT_BATCH_WINDOW_CSV = OUTPUT_DIR / "entrance_count_3sec_all_videos.csv"
+OUTPUT_BATCH_EVENT_CSV = OUTPUT_DIR / "entrance_events_all_videos.csv"
 
 FARNEBACK_PARAMS = dict(
     pyr_scale=0.5,
@@ -399,14 +399,25 @@ def summarize_events(events, total_duration_sec):
     return pd.DataFrame(rows, columns=columns)
 
 
-def main():
-    OUTPUT_DIR.mkdir(exist_ok=True)
+def make_output_paths(video_path):
+    stem = Path(video_path).stem
+    return {
+        "preview": OUTPUT_DIR / f"{stem}_entrance_count_preview.mp4",
+        "frame": OUTPUT_DIR / f"{stem}_entrance_flux_frame.csv",
+        "event": OUTPUT_DIR / f"{stem}_entrance_events.csv",
+        "window": OUTPUT_DIR / f"{stem}_entrance_count_3sec.csv",
+    }
 
-    cap = cv2.VideoCapture(VIDEO_PATH)
+
+def process_video(video_path):
+    video_path = Path(video_path)
+    output_paths = make_output_paths(video_path)
+
+    cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         raise RuntimeError(
-            f"Cannot open video: {VIDEO_PATH}. "
-            "Place the input video at this path or edit VIDEO_PATH."
+            f"Cannot open video: {video_path}. "
+            "Check that the path exists and OpenCV can read the file."
         )
 
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -430,7 +441,7 @@ def main():
 
     ret, frame = cap.read()
     if not ret:
-        raise RuntimeError(f"Cannot read first frame from video: {VIDEO_PATH}")
+        raise RuntimeError(f"Cannot read first frame from video: {video_path}")
 
     roi = frame[roi_y1:roi_y2, roi_x1:roi_x2]
     roi_h, roi_w = roi.shape[:2]
@@ -455,9 +466,9 @@ def main():
     prev_gray = cv2.GaussianBlur(prev_gray, (3, 3), 0)
 
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(str(OUTPUT_PREVIEW_VIDEO), fourcc, fps, (roi_w, roi_h))
+    writer = cv2.VideoWriter(str(output_paths["preview"]), fourcc, fps, (roi_w, roi_h))
     if not writer.isOpened():
-        raise RuntimeError(f"Cannot open video writer: {OUTPUT_PREVIEW_VIDEO}")
+        raise RuntimeError(f"Cannot open video writer: {output_paths['preview']}")
 
     in_detector = FluxEventDetector(
         IN_EVENT_START_THRESHOLD,
@@ -564,7 +575,7 @@ def main():
         raise RuntimeError("No frame pairs processed.")
 
     frame_df = pd.DataFrame(frame_rows)
-    frame_df.to_csv(OUTPUT_FRAME_CSV, index=False)
+    frame_df.to_csv(output_paths["frame"], index=False)
 
     event_columns = [
         "direction",
@@ -577,19 +588,97 @@ def main():
         "count_round",
     ]
     event_df = pd.DataFrame(events, columns=event_columns)
-    event_df.to_csv(OUTPUT_EVENT_CSV, index=False)
+    event_df.to_csv(output_paths["event"], index=False)
 
     summary_df = summarize_events(events, last_time_sec)
-    summary_df.to_csv(OUTPUT_WINDOW_CSV, index=False)
+    summary_df.to_csv(output_paths["window"], index=False)
 
+    in_events = [event for event in events if event["direction"] == "IN"]
+    out_events = [event for event in events if event["direction"] == "OUT"]
+    result = {
+        "video": video_path.name,
+        "video_path": str(video_path),
+        "duration_sec": last_time_sec,
+        "fps": fps,
+        "processed_frame_pairs": len(frame_rows),
+        "in_event_count": len(in_events),
+        "out_event_count": len(out_events),
+        "in_count_est_sum": float(sum(event["count_est"] for event in in_events)),
+        "out_count_est_sum": float(sum(event["count_est"] for event in out_events)),
+        "in_count_round_sum": int(sum(event["count_round"] for event in in_events)),
+        "out_count_round_sum": int(sum(event["count_round"] for event in out_events)),
+        "net_count_round": int(
+            sum(event["count_round"] for event in in_events)
+            - sum(event["count_round"] for event in out_events)
+        ),
+        "preview_video": str(output_paths["preview"]),
+        "frame_csv": str(output_paths["frame"]),
+        "event_csv": str(output_paths["event"]),
+        "window_csv": str(output_paths["window"]),
+    }
+
+    return result, event_df, summary_df
+
+
+def add_video_column(df, video_name):
+    out = df.copy()
+    out.insert(0, "video", video_name)
+    return out
+
+
+def run_batch(video_paths):
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    video_summaries = []
+    all_events = []
+    all_windows = []
+
+    for idx, video_path in enumerate(video_paths, start=1):
+        print(f"[{idx}/{len(video_paths)}] Processing {video_path}")
+        result, event_df, window_df = process_video(video_path)
+        video_summaries.append(result)
+        all_events.append(add_video_column(event_df, result["video"]))
+        all_windows.append(add_video_column(window_df, result["video"]))
+
+    video_summary_df = pd.DataFrame(video_summaries)
+    video_summary_df.to_csv(OUTPUT_BATCH_VIDEO_SUMMARY_CSV, index=False)
+
+    if all_events:
+        pd.concat(all_events, ignore_index=True).to_csv(
+            OUTPUT_BATCH_EVENT_CSV,
+            index=False,
+        )
+    if all_windows:
+        pd.concat(all_windows, ignore_index=True).to_csv(
+            OUTPUT_BATCH_WINDOW_CSV,
+            index=False,
+        )
+
+    return video_summary_df
+
+
+def main():
+    OUTPUT_DIR.mkdir(exist_ok=True)
+
+    if BATCH_ALL_VIDEOS:
+        video_paths = sorted(VIDEO_DIR.glob("*.mp4"))
+        if not video_paths:
+            raise RuntimeError(f"No mp4 videos found in {VIDEO_DIR}")
+
+        video_summary_df = run_batch(video_paths)
+        print("Done.")
+        print(f"video summary csv: {OUTPUT_BATCH_VIDEO_SUMMARY_CSV}")
+        print(f"all events csv   : {OUTPUT_BATCH_EVENT_CSV}")
+        print(f"all windows csv  : {OUTPUT_BATCH_WINDOW_CSV}")
+        print(video_summary_df[["video", "in_count_round_sum", "out_count_round_sum", "net_count_round"]])
+        return
+
+    result, _, _ = process_video(VIDEO_PATH)
     print("Done.")
-    print(f"preview video: {OUTPUT_PREVIEW_VIDEO}")
-    print(f"frame csv    : {OUTPUT_FRAME_CSV}")
-    print(f"event csv    : {OUTPUT_EVENT_CSV}")
-    print(f"window csv   : {OUTPUT_WINDOW_CSV}")
-    print(f"ROI size     : {roi_w} x {roi_h}")
-    print(f"Entrance ROI : {(rect_x1, rect_y1, rect_x2, rect_y2)}")
-    print(f"FPS          : {fps:.3f}")
+    print(f"preview video: {result['preview_video']}")
+    print(f"frame csv    : {result['frame_csv']}")
+    print(f"event csv    : {result['event_csv']}")
+    print(f"window csv   : {result['window_csv']}")
+    print(f"IN/OUT       : {result['in_count_round_sum']} / {result['out_count_round_sum']}")
 
 
 if __name__ == "__main__":
