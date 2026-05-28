@@ -9,19 +9,39 @@
 - 입구 하단은 ROI 하단과 맞닿아 있어 실제 통과 경계로 보기 어렵기 때문에 counting에서 제외했습니다.
 - 프레임 단위 raw flux를 그대로 누적하면 노이즈와 느린 움직임이 과대 계수되는 문제가 있어, 먼저 flux 신호를 안정화하는 방향으로 전환했습니다.
 - Gaussian blur, temporal persistence filter, optional connected-component area filter를 추가해 짧은 optical-flow 스파이크와 작은 노이즈 성분을 줄였습니다.
-- `main.py`에 batch, compare, groups, evaluate, tune 실행 모드를 추가해 여러 영상과 파라미터 preset을 비교할 수 있게 했습니다.
+- `src/main.py`에 batch, compare, groups, evaluate, tune 실행 모드를 추가해 여러 영상과 파라미터 preset을 비교할 수 있게 했습니다.
 - 실험 결과 확인을 위해 preview video, frame CSV, window CSV, comparison/evaluation CSV를 생성하도록 정리했습니다.
+
+## 디렉토리 구조
+
+```text
+.
+├── src/
+│   ├── bee_entrance_count.py
+│   ├── main.py
+│   ├── optical_count.py
+│   ├── capture.py
+│   ├── vis.py
+│   ├── vis_arr.py
+│   ├── vis_arr2.py
+│   └── sep_blob.py
+├── docs/
+├── videos/
+├── bee_count_output/
+├── pyproject.toml
+└── README.md
+```
 
 ## 주요 파일
 
 | 파일 | 역할 |
 | --- | --- |
-| `bee_entrance_count.py` | optical-flow 계산, 경계 flux 계산, persistence/component filter, CSV 및 preview 출력의 핵심 구현 |
-| `main.py` | 여러 영상을 batch/compare/groups/evaluate/tune 모드로 실행하는 편의 runner |
-| `optical_count.py` | 기본 비교 영상 2개를 실행하는 작은 wrapper |
-| `capture.py` | preview 영상에서 특정 프레임을 이미지로 추출해 ROI/overlay를 확인하는 보조 스크립트 |
-| `vis.py`, `vis_arr.py`, `vis_arr2.py` | optical-flow magnitude, arrow, HSV 방향 시각화 실험 스크립트 |
-| `sep_blob.py` | flow magnitude 기반 blob/component 분리 실험 스크립트 |
+| `src/bee_entrance_count.py` | optical-flow 계산, 경계 flux 계산, persistence/component filter, CSV 및 preview 출력의 핵심 구현 |
+| `src/main.py` | 여러 영상을 batch/compare/groups/evaluate/tune 모드로 실행하는 편의 runner |
+| `src/optical_count.py` | 기본 비교 영상 2개를 실행하는 작은 wrapper |
+| `src/capture.py` | preview 영상에서 특정 프레임을 이미지로 추출해 ROI/overlay를 확인하는 보조 스크립트 |
+| `src/vis.py`, `src/vis_arr.py`, `src/vis_arr2.py` | optical-flow magnitude, arrow, HSV 방향 시각화 실험 스크립트 |
+| `src/sep_blob.py` | flow magnitude 기반 blob/component 분리 실험 스크립트 |
 | `docs/` | noise filtering, persistence filter, event counting 접근에 대한 상세 메모 |
 
 ## 처리 흐름
@@ -61,7 +81,7 @@ ent_x1, ent_y1, ent_x2, ent_y2 = 1400, 1200, 1600, 1232
 | `min_flow_component_area` | `30` | component area filter 최소 면적 |
 | `window_sec` | `3.0` | 요약 CSV window 길이 |
 
-`main.py`의 현재 preset은 `raw`, `persistence`, `blur5`, `strict_noise`, `selected`입니다. 기본 preset은 `selected`이며 blur 5, threshold 강화, area filter를 함께 사용합니다.
+`src/main.py`의 현재 preset은 `raw`, `persistence`, `blur5`, `strict_noise`, `selected`입니다. 기본 preset은 `selected`이며 blur 5, threshold 강화, area filter를 함께 사용합니다.
 
 ## 설치
 
@@ -88,37 +108,37 @@ pip install opencv-python numpy pandas
 단일 영상 처리:
 
 ```powershell
-python bee_entrance_count.py --video videos/ANU-25-summer-6_20260405_060000.mp4
+python -m src.bee_entrance_count --video videos/ANU-25-summer-6_20260405_060000.mp4
 ```
 
 두 개 이상의 영상 비교:
 
 ```powershell
-python bee_entrance_count.py --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
+python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
 ```
 
 현재 선택 preset으로 전체 batch 실행:
 
 ```powershell
-python main.py --mode batch --preset selected
+python -m src.main --mode batch --preset selected
 ```
 
 특정 영상 목록만 비교:
 
 ```powershell
-python main.py --mode compare --videos videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
+python -m src.main --mode compare --videos videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
 ```
 
 간단한 parameter grid tuning:
 
 ```powershell
-python main.py --mode tune --preset selected --truth-csv videos/entrance.csv
+python -m src.main --mode tune --preset selected --truth-csv videos/entrance.csv
 ```
 
 실행 계획만 확인:
 
 ```powershell
-python main.py --mode batch --preset selected --dry-run
+python -m src.main --mode batch --preset selected --dry-run
 ```
 
 ## 산출물
@@ -152,3 +172,7 @@ python main.py --mode batch --preset selected --dry-run
 ## 데이터 관리
 
 `videos/`와 `bee_count_output/`은 로컬 데이터/생성물 디렉토리로 관리합니다. 영상 원본, preview, CSV 결과물은 크기가 커질 수 있으므로 기본적으로 Git 추적에서 제외되어 있습니다.
+
+## 시각화 보조 스크립트
+
+`src/vis.py`는 ROI의 optical-flow magnitude를 heatmap으로 겹쳐 저장합니다. `src/vis_arr.py`는 일정 간격의 flow vector를 화살표로 표시해 움직임 방향을 빠르게 확인하는 용도입니다. `src/vis_arr2.py`는 flow 방향을 HSV hue로, 강도를 value로 표현해 전체 flow field의 방향 분포를 확인합니다. `src/sep_blob.py`는 flow magnitude mask에 morphology와 connected component 분석을 적용해 움직임 blob 후보가 어떻게 분리되는지 보는 실험용 스크립트입니다.

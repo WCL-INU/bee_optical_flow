@@ -111,23 +111,24 @@ After the two quiet videos pass, check a high-activity positive sample and confi
 Run one video:
 
 ```powershell
-python bee_entrance_count.py --video videos/ANU-25-summer-6_20260405_060000.mp4
+python -m src.bee_entrance_count --video videos/ANU-25-summer-6_20260405_060000.mp4
 ```
 
 Compare the two noise-focused test videos:
 
 ```powershell
-python bee_entrance_count.py --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
+python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
 ```
 
 Try a stricter area filter:
 
 ```powershell
-python bee_entrance_count.py --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --min-flow-component-area 50
+python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --min-flow-component-area 50
 ```
 
 Enable optional mean magnitude filtering:
 
 ```powershell
-python bee_entrance_count.py --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --use-mean-mag-filter
+# Historical note: this option is described above as an experiment,
+# but it is not exposed by the current CLI.
 ```

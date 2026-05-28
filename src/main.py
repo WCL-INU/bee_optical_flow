@@ -4,7 +4,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from bee_entrance_count import Config, compare_videos, process_video
+try:
+    from src.bee_entrance_count import Config, compare_videos, process_video
+except ModuleNotFoundError:
+    from bee_entrance_count import Config, compare_videos, process_video
 
 
 VIDEO_DIR = Path("videos")

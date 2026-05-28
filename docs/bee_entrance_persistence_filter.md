@@ -110,47 +110,47 @@ Both are off by default because they are stronger assumptions than blur and pers
 Single video:
 
 ```powershell
-python bee_entrance_count.py --video videos/ANU-25-summer-6_20260405_060000.mp4
+python -m src.bee_entrance_count --video videos/ANU-25-summer-6_20260405_060000.mp4
 ```
 
 Default comparison:
 
 ```powershell
-python bee_entrance_count.py --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
+python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
 ```
 
 Blur 5 comparison:
 
 ```powershell
-python bee_entrance_count.py --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --blur-kernel 5
+python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --blur-kernel 5
 ```
 
 Disable persistence:
 
 ```powershell
-python bee_entrance_count.py --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --no-persistence-filter
+python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --no-persistence-filter
 ```
 
 Stronger persistence:
 
 ```powershell
-python bee_entrance_count.py --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --persist-decay 0.75 --persist-threshold 1.8
+python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --persist-decay 0.75 --persist-threshold 1.8
 ```
 
 Optional area filter:
 
 ```powershell
-python bee_entrance_count.py --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --use-component-area-filter --min-flow-component-area 30
+python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --use-component-area-filter --min-flow-component-area 30
 ```
 
 Optional global flow compensation:
 
 ```powershell
-python bee_entrance_count.py --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --use-global-flow-compensation
+python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --use-global-flow-compensation
 ```
 
 Optional balanced bidirectional suppression:
 
 ```powershell
-python bee_entrance_count.py --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --use-bidirectional-balance-filter
+python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --use-bidirectional-balance-filter
 ```

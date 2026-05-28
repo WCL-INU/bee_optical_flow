@@ -1,6 +1,9 @@
 from pathlib import Path
 
-from bee_entrance_count import Config, compare_videos
+try:
+    from src.bee_entrance_count import Config, compare_videos
+except ModuleNotFoundError:
+    from bee_entrance_count import Config, compare_videos
 
 
 DEFAULT_COMPARE_VIDEOS = [

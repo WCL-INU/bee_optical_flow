@@ -112,16 +112,16 @@ The first preview points to inspect are:
 
 ## 10. Running the script
 
-Place the input video at `input.mp4` or edit `VIDEO_PATH` in `optical_count.py`.
+Run the default two-video wrapper from the project root:
 
 Run:
 
 ```powershell
-python optical_count.py
+python -m src.optical_count
 ```
 
 For a quick syntax check without processing video:
 
 ```powershell
-python -m py_compile optical_count.py
+python -m py_compile src/optical_count.py
 ```
