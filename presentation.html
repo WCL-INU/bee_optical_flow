@@ -1,0 +1,1549 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bee Entrance Optical Flow Presentation</title>
+  <style>
+    :root {
+      --bg: #f6f4ef;
+      --surface: #ffffff;
+      --ink: #252525;
+      --muted: #69665f;
+      --line: #d9d4c8;
+      --teal: #007f7a;
+      --teal-soft: #dff2ee;
+      --coral: #c94c3f;
+      --coral-soft: #f8ded9;
+      --amber: #d09b20;
+      --amber-soft: #faedcc;
+      --green: #3d7d45;
+      --green-soft: #e2f0dd;
+      --violet: #6251a3;
+      --violet-soft: #e8e2f7;
+      --code: #1f2933;
+      --shadow: 0 22px 70px rgba(37, 37, 37, 0.12);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .deck {
+      min-height: 100%;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: #fbfaf7;
+      padding: 28px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .brand {
+      display: grid;
+      gap: 8px;
+    }
+
+    .eyebrow {
+      color: var(--teal);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.13;
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .nav-list {
+      display: grid;
+      gap: 7px;
+      margin-top: 2px;
+    }
+
+    .nav-item {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 9px 10px;
+      text-align: left;
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr);
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .nav-item span:first-child {
+      width: 24px;
+      height: 24px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #ece7dc;
+      color: #565047;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .nav-item span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .nav-item.active {
+      border-color: #b9d9d5;
+      background: var(--teal-soft);
+      color: #113d3a;
+    }
+
+    .nav-item.active span:first-child {
+      background: var(--teal);
+      color: #ffffff;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      display: grid;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .mini-meter {
+      height: 8px;
+      background: #e9e2d7;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .mini-meter div {
+      height: 100%;
+      width: 0%;
+      background: var(--teal);
+      transition: width 180ms ease;
+    }
+
+    .stage {
+      position: relative;
+      min-width: 0;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+
+    .slides {
+      position: relative;
+      min-height: 0;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      padding: 48px 56px 36px;
+      display: none;
+      overflow: auto;
+    }
+
+    .slide.active {
+      display: block;
+    }
+
+    .slide-inner {
+      min-height: calc(100vh - 144px);
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      align-content: center;
+      gap: 28px;
+    }
+
+    .slide-header {
+      display: grid;
+      gap: 12px;
+      max-width: 960px;
+    }
+
+    .slide-kicker {
+      color: var(--teal);
+      font-size: 14px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 44px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.65;
+    }
+
+    .lead {
+      color: #3d3a35;
+      font-size: 22px;
+      line-height: 1.55;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid.two {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+      box-shadow: 0 12px 38px rgba(37, 37, 37, 0.06);
+    }
+
+    .panel.teal {
+      border-color: #b8d7d4;
+      background: var(--teal-soft);
+    }
+
+    .panel.coral {
+      border-color: #efc7c0;
+      background: var(--coral-soft);
+    }
+
+    .panel.amber {
+      border-color: #ead39a;
+      background: var(--amber-soft);
+    }
+
+    .panel.green {
+      border-color: #c3ddbd;
+      background: var(--green-soft);
+    }
+
+    .panel.violet {
+      border-color: #d5caef;
+      background: var(--violet-soft);
+    }
+
+    .panel h3 {
+      margin-bottom: 10px;
+    }
+
+    .panel p,
+    .panel li {
+      font-size: 16px;
+      line-height: 1.58;
+    }
+
+    ul,
+    ol {
+      margin: 0;
+      padding-left: 22px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.65;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+
+    code,
+    pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    pre {
+      margin: 0;
+      padding: 18px;
+      color: #f4f7fa;
+      background: var(--code);
+      border-radius: 8px;
+      overflow: auto;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: #ece7dc;
+      color: #403b35;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .hero-layout {
+      grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+      align-items: center;
+    }
+
+    .mock-video {
+      position: relative;
+      min-height: 430px;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.28) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255,255,255,0.28) 1px, transparent 1px),
+        #49423a;
+      background-size: 34px 34px;
+      border: 10px solid #ffffff;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .mock-texture {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 24% 28%, rgba(215, 164, 50, 0.33) 0 8%, transparent 8.5%),
+        radial-gradient(circle at 70% 18%, rgba(0, 127, 122, 0.18) 0 7%, transparent 7.5%),
+        radial-gradient(circle at 55% 74%, rgba(201, 76, 63, 0.18) 0 9%, transparent 9.5%);
+    }
+
+    .roi-box {
+      position: absolute;
+      right: 48px;
+      bottom: 70px;
+      width: 270px;
+      height: 184px;
+      border: 3px solid var(--teal);
+      background: rgba(0, 127, 122, 0.08);
+    }
+
+    .entrance-box {
+      position: absolute;
+      right: 88px;
+      bottom: 70px;
+      width: 160px;
+      height: 46px;
+      border: 3px solid var(--coral);
+      background: rgba(201, 76, 63, 0.12);
+    }
+
+    .boundary-top,
+    .boundary-left,
+    .boundary-right {
+      position: absolute;
+      background: rgba(0, 215, 215, 0.65);
+    }
+
+    .boundary-top {
+      left: -8px;
+      right: -8px;
+      top: -8px;
+      height: 10px;
+    }
+
+    .boundary-left {
+      left: -8px;
+      top: -8px;
+      bottom: 0;
+      width: 10px;
+    }
+
+    .boundary-right {
+      right: -8px;
+      top: -8px;
+      bottom: 0;
+      width: 10px;
+    }
+
+    .mock-label {
+      position: absolute;
+      left: 20px;
+      bottom: 18px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      color: #ffffff;
+      background: rgba(37, 37, 37, 0.68);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .bee-dot {
+      position: absolute;
+      width: 18px;
+      height: 10px;
+      border-radius: 50%;
+      background: #f0b62f;
+      border: 2px solid #252525;
+      transform: rotate(-18deg);
+    }
+
+    .bee-dot.one { right: 228px; bottom: 145px; }
+    .bee-dot.two { right: 170px; bottom: 118px; transform: rotate(24deg); }
+    .bee-dot.three { right: 128px; bottom: 168px; transform: rotate(8deg); }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .pipe-step {
+      position: relative;
+      min-height: 148px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 14px;
+      display: grid;
+      align-content: space-between;
+      gap: 12px;
+    }
+
+    .pipe-step::after {
+      content: "";
+      position: absolute;
+      right: -10px;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      border-top: 3px solid var(--teal);
+      border-right: 3px solid var(--teal);
+      transform: translateY(-50%) rotate(45deg);
+      background: var(--bg);
+      z-index: 2;
+    }
+
+    .pipe-step:last-child::after {
+      content: none;
+    }
+
+    .pipe-num {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--teal);
+      color: #ffffff;
+      font-weight: 900;
+    }
+
+    .pipe-step h3 {
+      font-size: 18px;
+    }
+
+    .pipe-step p {
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .concept-board {
+      position: relative;
+      min-height: 420px;
+      background: #fffdf8;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .boundary-demo {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 410px;
+      height: 180px;
+      transform: translate(-50%, -40%);
+      border: 4px solid var(--coral);
+      background: rgba(201, 76, 63, 0.06);
+    }
+
+    .boundary-demo::before,
+    .boundary-demo::after {
+      content: "";
+      position: absolute;
+      top: -16px;
+      bottom: 0;
+      width: 16px;
+      background: rgba(0, 215, 215, 0.56);
+    }
+
+    .boundary-demo::before {
+      left: -16px;
+    }
+
+    .boundary-demo::after {
+      right: -16px;
+    }
+
+    .demo-top {
+      position: absolute;
+      left: -16px;
+      right: -16px;
+      top: -16px;
+      height: 16px;
+      background: rgba(0, 215, 215, 0.56);
+    }
+
+    .demo-bottom {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -5px;
+      height: 6px;
+      background: #8c8982;
+    }
+
+    .arrow {
+      position: absolute;
+      width: 110px;
+      height: 3px;
+      background: var(--green);
+      transform-origin: left center;
+    }
+
+    .arrow::after {
+      content: "";
+      position: absolute;
+      right: -2px;
+      top: -6px;
+      border-left: 13px solid var(--green);
+      border-top: 7px solid transparent;
+      border-bottom: 7px solid transparent;
+    }
+
+    .arrow.out,
+    .arrow.out::after {
+      background: var(--violet);
+      border-left-color: var(--violet);
+    }
+
+    .arrow.in1 { left: 170px; top: 135px; transform: rotate(32deg); }
+    .arrow.in2 { left: 286px; top: 120px; transform: rotate(80deg); }
+    .arrow.out { right: 174px; bottom: 112px; transform: rotate(205deg); }
+
+    .board-note {
+      position: absolute;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .board-note.a { left: 30px; top: 28px; }
+    .board-note.b { right: 30px; top: 28px; }
+    .board-note.c { left: 34px; bottom: 28px; }
+
+    .filter-stack {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr);
+      align-items: center;
+      gap: 22px;
+    }
+
+    .mask-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
+      padding: 18px;
+      background: #fffdf8;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .cell {
+      aspect-ratio: 1;
+      border-radius: 4px;
+      background: #e3ded4;
+    }
+
+    .cell.hot {
+      background: var(--coral);
+    }
+
+    .cell.keep {
+      background: var(--teal);
+    }
+
+    .cell.soft {
+      background: var(--amber);
+    }
+
+    .funnel {
+      height: 230px;
+      display: grid;
+      place-items: center;
+      color: var(--teal);
+      font-size: 60px;
+      font-weight: 900;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      align-items: end;
+      gap: 10px;
+      min-height: 280px;
+      padding: 22px 18px 18px;
+      border-left: 2px solid var(--line);
+      border-bottom: 2px solid var(--line);
+      background: #fffdf8;
+      border-radius: 8px;
+    }
+
+    .bar {
+      display: grid;
+      align-items: end;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .bar::before {
+      content: "";
+      height: var(--h);
+      min-height: 12px;
+      background: var(--teal);
+      border-radius: 8px 8px 3px 3px;
+    }
+
+    .bar.raw::before {
+      background: var(--coral);
+    }
+
+    .file-map {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .tree {
+      padding: 20px;
+      background: #252525;
+      color: #f8f5ee;
+      border-radius: 8px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 15px;
+      line-height: 1.75;
+      overflow: auto;
+    }
+
+    .tree strong {
+      color: #9ae3dc;
+    }
+
+    .mode-table {
+      display: grid;
+      gap: 10px;
+    }
+
+    .mode-row {
+      display: grid;
+      grid-template-columns: 120px minmax(0, 1fr);
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+      align-items: start;
+    }
+
+    .mode-row strong {
+      color: var(--teal);
+      font-size: 16px;
+    }
+
+    .mode-row span {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .video-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+      gap: 22px;
+      align-items: center;
+    }
+
+    video {
+      width: 100%;
+      max-height: 560px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #252525;
+      box-shadow: var(--shadow);
+    }
+
+    .output-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .output-item {
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .output-item strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+    }
+
+    .output-item span {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .roadmap {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+      counter-reset: phase;
+    }
+
+    .phase {
+      counter-increment: phase;
+      min-height: 230px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      display: grid;
+      align-content: start;
+      gap: 12px;
+    }
+
+    .phase::before {
+      content: counter(phase);
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--amber);
+      color: #ffffff;
+      font-weight: 900;
+    }
+
+    .phase h3 {
+      font-size: 18px;
+    }
+
+    .phase p {
+      font-size: 15px;
+    }
+
+    .controls {
+      border-top: 1px solid var(--line);
+      background: #fbfaf7;
+      min-height: 72px;
+      padding: 14px 24px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .control-button {
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: #ffffff;
+      color: var(--ink);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .control-button:hover {
+      border-color: var(--teal);
+      color: var(--teal);
+    }
+
+    .counter {
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .progress-track {
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #e9e2d7;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--teal);
+      transition: width 180ms ease;
+    }
+
+    .focus-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .focus-item {
+      min-height: 210px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .focus-icon {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #ffffff;
+      background: var(--teal);
+      font-weight: 900;
+      font-size: 22px;
+    }
+
+    .focus-item:nth-child(2) .focus-icon {
+      background: var(--coral);
+    }
+
+    .focus-item:nth-child(3) .focus-icon {
+      background: var(--amber);
+    }
+
+    .compare-columns {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .big-number {
+      font-size: 54px;
+      line-height: 1;
+      color: var(--teal);
+      font-weight: 950;
+    }
+
+    @media (max-width: 1080px) {
+      body {
+        overflow: auto;
+      }
+
+      .deck {
+        display: block;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .stage {
+        display: block;
+      }
+
+      .slides {
+        display: grid;
+      }
+
+      .slide {
+        position: static;
+        display: block;
+        padding: 32px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .slide:not(.active) {
+        display: block;
+      }
+
+      .slide-inner {
+        min-height: auto;
+      }
+
+      .controls {
+        position: sticky;
+        bottom: 0;
+      }
+
+      h2 {
+        font-size: 34px;
+      }
+
+      .grid.two,
+      .grid.three,
+      .hero-layout,
+      .file-map,
+      .video-panel,
+      .compare-columns,
+      .focus-list,
+      .roadmap {
+        grid-template-columns: 1fr;
+      }
+
+      .pipeline {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .pipe-step::after {
+        content: none;
+      }
+
+      .filter-stack {
+        grid-template-columns: 1fr;
+      }
+
+      .funnel {
+        height: 70px;
+        transform: rotate(90deg);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .pipeline {
+        grid-template-columns: 1fr;
+      }
+
+      .mock-video,
+      .concept-board {
+        min-height: 340px;
+      }
+
+      .roi-box {
+        right: 24px;
+        width: 230px;
+      }
+
+      .entrance-box {
+        right: 58px;
+        width: 150px;
+      }
+
+      .boundary-demo {
+        width: 260px;
+      }
+
+      .controls {
+        grid-template-columns: auto 1fr auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck">
+    <aside class="sidebar" aria-label="슬라이드 목차">
+      <div class="brand">
+        <div class="eyebrow">Bee Optical Flow</div>
+        <h1>벌통 입구 활동량 추정</h1>
+        <p>개체 탐지 대신 입구 경계의 방향성 있는 움직임을 측정하는 프로젝트 설명 자료</p>
+      </div>
+      <nav class="nav-list" id="navList"></nav>
+      <div class="sidebar-footer">
+        <div class="mini-meter" aria-hidden="true"><div id="miniProgress"></div></div>
+        <div>시각 자료: ROI, boundary normal, filter stack, output preview</div>
+      </div>
+    </aside>
+
+    <section class="stage">
+      <div class="slides" id="slides">
+        <section class="slide active" data-title="문제 정의">
+          <div class="slide-inner grid hero-layout">
+            <div class="slide-header">
+              <div class="slide-kicker">Problem framing</div>
+              <h2>벌을 찾는 대신, 입구를 통과하는 움직임을 잰다</h2>
+              <p class="lead">이 프로젝트는 벌 한 마리씩을 탐지하거나 ID tracking하지 않는다. 벌통 입구 경계 주변에서 optical flow를 계산하고, 그 움직임이 안쪽인지 바깥쪽인지 나누어 3초 단위 활동량으로 요약한다.</p>
+              <div class="tag-row">
+                <span class="tag">OpenCV Farneback</span>
+                <span class="tag">ROI 기반 분석</span>
+                <span class="tag">IN/OUT flux</span>
+                <span class="tag">노이즈 필터링</span>
+              </div>
+            </div>
+            <div class="mock-video" aria-label="ROI와 입구 경계 개념도">
+              <div class="mock-texture"></div>
+              <div class="roi-box"></div>
+              <div class="entrance-box">
+                <div class="boundary-top"></div>
+                <div class="boundary-left"></div>
+                <div class="boundary-right"></div>
+              </div>
+              <div class="bee-dot one"></div>
+              <div class="bee-dot two"></div>
+              <div class="bee-dot three"></div>
+              <div class="mock-label">cyan: counting band / red: entrance</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="핵심 메시지">
+          <div class="slide-inner">
+            <div class="slide-header">
+              <div class="slide-kicker">Main idea</div>
+              <h2>이 프로젝트의 핵심 질문은 세 가지다</h2>
+              <p class="lead">팀원이 세부 알고리즘을 모르더라도 이 세 질문을 잡으면 전체 구현을 따라갈 수 있다.</p>
+            </div>
+            <div class="focus-list">
+              <div class="focus-item">
+                <div class="focus-icon">1</div>
+                <h3>어디를 볼 것인가?</h3>
+                <p>전체 영상이 아니라 벌통 입구 주변 ROI와 입구 사각형만 본다.</p>
+              </div>
+              <div class="focus-item">
+                <div class="focus-icon">2</div>
+                <h3>어떤 움직임인가?</h3>
+                <p>입구 경계에 수직인 방향으로 들어가거나 나오는 움직임만 합산한다.</p>
+              </div>
+              <div class="focus-item">
+                <div class="focus-icon">3</div>
+                <h3>믿을 수 있는가?</h3>
+                <p>짧은 spike와 작은 움직임 조각을 필터링해 노이즈를 줄인다.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="처리 파이프라인">
+          <div class="slide-inner">
+            <div class="slide-header">
+              <div class="slide-kicker">Pipeline</div>
+              <h2>코드의 전체 흐름</h2>
+              <p class="lead">`process_video()`는 영상 입력부터 CSV와 preview video 생성까지 한 번에 수행한다.</p>
+            </div>
+            <div class="pipeline">
+              <div class="pipe-step">
+                <div class="pipe-num">1</div>
+                <h3>Video</h3>
+                <p>OpenCV로 frame을 순서대로 읽는다.</p>
+              </div>
+              <div class="pipe-step">
+                <div class="pipe-num">2</div>
+                <h3>ROI</h3>
+                <p>벌통 입구 주변 영역만 crop한다.</p>
+              </div>
+              <div class="pipe-step">
+                <div class="pipe-num">3</div>
+                <h3>Optical flow</h3>
+                <p>이전 frame과 현재 frame의 움직임 벡터를 계산한다.</p>
+              </div>
+              <div class="pipe-step">
+                <div class="pipe-num">4</div>
+                <h3>Boundary flux</h3>
+                <p>입구 normal 방향으로 IN/OUT flux를 나눈다.</p>
+              </div>
+              <div class="pipe-step">
+                <div class="pipe-num">5</div>
+                <h3>Filtering</h3>
+                <p>blur, persistence, area filter로 노이즈를 억제한다.</p>
+              </div>
+              <div class="pipe-step">
+                <div class="pipe-num">6</div>
+                <h3>Output</h3>
+                <p>frame CSV, 3초 window CSV, preview video를 저장한다.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="Optical Flow">
+          <div class="slide-inner grid two">
+            <div class="slide-header">
+              <div class="slide-kicker">Optical flow</div>
+              <h2>각 pixel의 이동 벡터를 구한다</h2>
+              <p class="lead">Farneback optical flow는 frame 사이에서 이미지 texture가 어느 방향으로 얼마나 움직였는지 추정한다.</p>
+              <pre><code>flow[y, x] = (dx, dy)
+mag = sqrt(dx * dx + dy * dy)</code></pre>
+            </div>
+            <div class="concept-board">
+              <div class="board-note a">frame t</div>
+              <div class="board-note b">frame t + 1</div>
+              <div class="board-note c">화살표 = 움직임 벡터</div>
+              <div class="arrow in1"></div>
+              <div class="arrow in2"></div>
+              <div class="arrow out"></div>
+              <div class="bee-dot one" style="right: 58%; bottom: 50%;"></div>
+              <div class="bee-dot two" style="right: 46%; bottom: 40%;"></div>
+              <div class="bee-dot three" style="right: 35%; bottom: 55%;"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="Boundary Normal">
+          <div class="slide-inner grid two">
+            <div class="concept-board">
+              <div class="boundary-demo">
+                <div class="demo-top"></div>
+                <div class="demo-bottom"></div>
+              </div>
+              <div class="arrow in1" style="left: 120px; top: 126px; transform: rotate(22deg);"></div>
+              <div class="arrow in2" style="left: 420px; top: 112px; transform: rotate(108deg);"></div>
+              <div class="arrow out" style="right: 126px; bottom: 92px; transform: rotate(205deg);"></div>
+              <div class="board-note a">top/left/right만 counting</div>
+              <div class="board-note b">bottom은 제외</div>
+              <div class="board-note c">normal 방향 projection으로 IN/OUT 판정</div>
+            </div>
+            <div class="slide-header">
+              <div class="slide-kicker">Boundary normal</div>
+              <h2>입구 경계에 수직인 움직임만 세어야 한다</h2>
+              <p class="lead">입구 사각형의 경계 주변 얇은 band를 만들고, optical-flow 벡터를 경계 normal 방향으로 투영한다.</p>
+              <div class="grid two">
+                <div class="panel green">
+                  <h3>Positive normal flow</h3>
+                  <p>입구 안쪽을 향하면 `IN` flux로 합산한다.</p>
+                </div>
+                <div class="panel violet">
+                  <h3>Negative normal flow</h3>
+                  <p>입구 바깥쪽을 향하면 `OUT` flux로 합산한다.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="필터링 이유">
+          <div class="slide-inner">
+            <div class="slide-header">
+              <div class="slide-kicker">Noise first</div>
+              <h2>현재 작업의 우선순위는 count logic보다 flux 신호 안정화다</h2>
+              <p class="lead">이전 event detector 접근은 문서화되어 있지만, 지금 구현은 노이즈가 count로 바뀌기 전에 optical-flow 후보 자체를 정리하는 데 집중한다.</p>
+            </div>
+            <div class="compare-columns">
+              <div class="panel coral">
+                <h3>Raw flux를 그대로 쓰면</h3>
+                <ul>
+                  <li>조용한 영상도 activity가 큰 것처럼 보일 수 있다.</li>
+                  <li>압축 artifact와 조명 변화가 flux로 들어온다.</li>
+                  <li>느린 움직임이나 흔들림이 과대 누적될 수 있다.</li>
+                </ul>
+              </div>
+              <div class="panel teal">
+                <h3>먼저 필터링하면</h3>
+                <ul>
+                  <li>짧은 spike를 줄인다.</li>
+                  <li>작고 흩어진 움직임 조각을 제거한다.</li>
+                  <li>활동량 추정 전에 신호를 비교 가능한 형태로 만든다.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="Candidate 조건">
+          <div class="slide-inner grid two">
+            <div class="slide-header">
+              <div class="slide-kicker">Candidate mask</div>
+              <h2>모든 flow를 쓰지 않고 조건을 통과한 pixel만 사용한다</h2>
+              <p class="lead">입구 경계 주변에 있고, 움직임 크기가 충분하며, normal 방향 성분도 충분한 pixel만 raw candidate가 된다.</p>
+              <pre><code>candidate = (
+    counting_boundary_band
+    &amp; (mag &gt; flow_mag_threshold)
+    &amp; (abs(normal_flow) &gt; normal_flow_threshold)
+)</code></pre>
+            </div>
+            <div class="grid">
+              <div class="panel amber">
+                <h3>1. boundary band</h3>
+                <p>입구 주변 top/left/right 얇은 영역에 있는가?</p>
+              </div>
+              <div class="panel green">
+                <h3>2. magnitude</h3>
+                <p>움직임의 전체 크기가 threshold보다 큰가?</p>
+              </div>
+              <div class="panel violet">
+                <h3>3. normal flow</h3>
+                <p>입구 안팎 방향 성분이 threshold보다 큰가?</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="필터 스택">
+          <div class="slide-inner">
+            <div class="slide-header">
+              <div class="slide-kicker">Filter stack</div>
+              <h2>짧은 spike와 작은 조각을 제거한다</h2>
+              <p class="lead">현재 핵심 필터는 Gaussian blur, temporal persistence, optional component area filter다.</p>
+            </div>
+            <div class="filter-stack">
+              <div class="mask-grid" aria-label="필터 전 candidate mask">
+                <span class="cell hot"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span>
+                <span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell keep"></span><span class="cell keep"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span>
+                <span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell keep"></span><span class="cell keep"></span><span class="cell keep"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span>
+                <span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell keep"></span><span class="cell keep"></span><span class="cell keep"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span>
+                <span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell keep"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span>
+              </div>
+              <div class="funnel">→</div>
+              <div class="mask-grid" aria-label="필터 후 candidate mask">
+                <span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span>
+                <span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell keep"></span><span class="cell keep"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span>
+                <span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell keep"></span><span class="cell keep"></span><span class="cell keep"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span>
+                <span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell keep"></span><span class="cell keep"></span><span class="cell keep"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span>
+                <span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell keep"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span>
+              </div>
+            </div>
+            <div class="grid three">
+              <div class="panel amber">
+                <h3>Gaussian blur</h3>
+                <p>작은 pixel 노이즈와 compression texture를 줄인다.</p>
+              </div>
+              <div class="panel teal">
+                <h3>Persistence</h3>
+                <p>한 frame짜리 spike보다 여러 frame 지속되는 움직임을 우선한다.</p>
+              </div>
+              <div class="panel green">
+                <h3>Area filter</h3>
+                <p>연결된 component가 너무 작으면 제거한다.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="3초 요약">
+          <div class="slide-inner grid two">
+            <div class="slide-header">
+              <div class="slide-kicker">Window summary</div>
+              <h2>프레임 flux를 3초 단위 활동량으로 압축한다</h2>
+              <p class="lead">`filtered_in_flux`와 `filtered_out_flux`를 window별로 합산하고, flux unit으로 나누어 count estimate를 만든다. 이 값은 calibration 전에는 실제 마릿수가 아니라 활동량 지표다.</p>
+              <pre><code>filtered_in_count_est =
+    filtered_in_flux_sum / in_bee_flux_unit
+
+filtered_out_count_est =
+    filtered_out_flux_sum / out_bee_flux_unit</code></pre>
+            </div>
+            <div>
+              <div class="timeline" aria-label="raw와 filtered flux 비교 차트">
+                <div class="bar raw" style="--h: 210px;">raw</div>
+                <div class="bar" style="--h: 136px;">filt</div>
+                <div class="bar raw" style="--h: 170px;">raw</div>
+                <div class="bar" style="--h: 96px;">filt</div>
+                <div class="bar raw" style="--h: 72px;">raw</div>
+                <div class="bar" style="--h: 34px;">filt</div>
+                <div class="bar raw" style="--h: 188px;">raw</div>
+                <div class="bar" style="--h: 142px;">filt</div>
+              </div>
+              <p style="margin-top: 12px; font-size: 15px;">빨강은 raw flux, 초록은 filtered flux를 뜻하는 예시 시각화다.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="코드 지도">
+          <div class="slide-inner">
+            <div class="slide-header">
+              <div class="slide-kicker">Repository map</div>
+              <h2>코드는 두 축으로 보면 된다</h2>
+              <p class="lead">알고리즘은 `bee_entrance_count.py`, 실험 반복과 평가 흐름은 `main.py`가 맡는다.</p>
+            </div>
+            <div class="file-map">
+              <div class="tree">
+                <div>src/</div>
+                <div>├── <strong>bee_entrance_count.py</strong>  # 핵심 pipeline</div>
+                <div>├── <strong>main.py</strong>                # batch/compare/tune</div>
+                <div>├── optical_count.py       # 기본 비교 wrapper</div>
+                <div>├── vis.py                 # magnitude heatmap</div>
+                <div>├── vis_arr.py             # arrow preview</div>
+                <div>├── vis_arr2.py            # HSV direction</div>
+                <div>└── sep_blob.py            # component 실험</div>
+                <div style="margin-top: 14px;">docs/</div>
+                <div>├── persistence_filter.md</div>
+                <div>├── noise_filtering.md</div>
+                <div>└── event_counting.md</div>
+              </div>
+              <div class="mode-table panel">
+                <div class="mode-row"><strong>batch</strong><span>선택된 영상을 각각 처리하고 summary CSV를 만든다.</span></div>
+                <div class="mode-row"><strong>compare</strong><span>같은 설정으로 여러 영상을 비교한다.</span></div>
+                <div class="mode-row"><strong>groups</strong><span>sliding group 단위 비교로 구간별 이상치를 본다.</span></div>
+                <div class="mode-row"><strong>evaluate</strong><span>truth CSV와 prediction summary를 비교한다.</span></div>
+                <div class="mode-row"><strong>tune</strong><span>파라미터 grid를 돌려 score가 낮은 설정을 찾는다.</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- <section class="slide" data-title="실제 산출물">
+          <div class="slide-inner">
+            <div class="slide-header">
+              <div class="slide-kicker">Output preview</div>
+              <h2>결과는 CSV만이 아니라 preview video로 검증한다</h2>
+              <p class="lead">현재 로컬에는 `ANU-25-summer-11_20260328_130000` 영상의 처리 결과가 있다.</p>
+            </div>
+            <div class="video-panel">
+              <video src="bee_count_output/persistence_filter/ANU-25-summer-11_20260328_130000_preview.mp4" controls muted playsinline></video>
+              <div class="output-list">
+                <div class="output-item">
+                  <strong>preview.mp4</strong>
+                  <span>ROI, 입구 사각형, counting band, filtered flow arrow를 눈으로 확인한다.</span>
+                </div>
+                <div class="output-item">
+                  <strong>frame_flux.csv</strong>
+                  <span>frame별 raw/filtered IN/OUT flux와 candidate pixel 수를 확인한다.</span>
+                </div>
+                <div class="output-item">
+                  <strong>window_3sec.csv</strong>
+                  <span>3초 window별 flux 합과 count estimate를 확인한다.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section> -->
+
+        <section class="slide" data-title="파라미터">
+          <div class="slide-inner">
+            <div class="slide-header">
+              <div class="slide-kicker">Current presets</div>
+              <h2>현재 기본 실행은 `selected` preset이 중심이다</h2>
+              <p class="lead">`Config` 기본값은 비교적 부드럽고, `src/main.py`의 `selected` preset은 더 강한 필터링을 사용한다.</p>
+            </div>
+            <div class="grid two">
+              <div class="panel">
+                <h3>Config 기본값</h3>
+                <pre><code>blur_kernel = 3
+flow_mag_threshold = 0.30
+normal_flow_threshold = 0.08
+use_persistence_filter = True
+persist_decay = 0.65
+persist_threshold = 1.3
+use_component_area_filter = False</code></pre>
+              </div>
+              <div class="panel teal">
+                <h3>selected preset</h3>
+                <pre><code>blur_kernel = 5
+flow_mag_threshold = 1.0
+normal_flow_threshold = 0.5
+use_component_area_filter = True
+min_flow_component_area = 200</code></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="검증 질문">
+          <div class="slide-inner">
+            <div class="slide-header">
+              <div class="slide-kicker">Validation checklist</div>
+              <h2>좋은 결과인지 판단하는 기준</h2>
+              <p class="lead">정확한 수치를 보기 전에, preview와 CSV가 같은 이야기를 하는지 확인해야 한다.</p>
+            </div>
+            <div class="grid two">
+              <div class="panel green">
+                <h3>Preview에서 볼 것</h3>
+                <ul>
+                  <li>ROI와 entrance rectangle이 실제 입구에 맞는가?</li>
+                  <li>cyan counting band가 top/left/right에만 있는가?</li>
+                  <li>flow arrow 방향이 실제 벌 이동과 맞는가?</li>
+                  <li>활동 구간에서 실제 움직임이 필터에 지워지지 않는가?</li>
+                </ul>
+              </div>
+              <div class="panel amber">
+                <h3>CSV에서 볼 것</h3>
+                <ul>
+                  <li>raw보다 filtered flux가 적절히 줄었는가?</li>
+                  <li>조용한 영상의 filtered traffic이 낮고 안정적인가?</li>
+                  <li>활발한 영상의 filtered traffic은 충분히 살아 있는가?</li>
+                  <li>truth label과 비례 관계가 있는가?</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="다음 작업">
+          <div class="slide-inner">
+            <div class="slide-header">
+              <div class="slide-kicker">Next steps</div>
+              <h2>다음 단계는 좌표, 노이즈, truth calibration 순서가 좋다</h2>
+              <p class="lead">필터만 계속 조정하기 전에 좌표와 IN/OUT 정의가 맞는지 먼저 확정해야 한다.</p>
+            </div>
+            <div class="roadmap">
+              <div class="phase">
+                <h3>좌표 검증</h3>
+                <p>`roi_ent_info.txt`와 `Config` 좌표 차이를 정리하고 영상별 preview로 확인한다.</p>
+              </div>
+              <div class="phase">
+                <h3>노이즈 영상</h3>
+                <p>low-activity 영상에서 filtered flux가 낮고 안정적인지 본다.</p>
+              </div>
+              <div class="phase">
+                <h3>활동 영상</h3>
+                <p>강한 필터가 실제 벌 움직임을 없애지 않는지 확인한다.</p>
+              </div>
+              <div class="phase">
+                <h3>Truth CSV</h3>
+                <p>사람이 직접 센 `video,in,out` label을 만든다.</p>
+              </div>
+              <div class="phase">
+                <h3>Tune</h3>
+                <p>`python -m src.main --mode tune`로 preset과 threshold를 비교한다.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="마무리">
+          <div class="slide-inner">
+            <div class="slide-header">
+              <div class="slide-kicker">Takeaway</div>
+              <h2>정리하면, 이 프로젝트는 경계 통과 흐름을 안정적으로 측정하는 실험이다</h2>
+              <p class="lead">개별 벌 탐지가 아니라 입구 경계에서의 방향성 있는 움직임을 재고, 노이즈를 줄여 시간 구간별 활동량을 만든다.</p>
+            </div>
+            <div class="grid three">
+              <div class="panel teal">
+                <div class="big-number">1</div>
+                <h3>입구 경계를 정확히 잡기</h3>
+                <p>ROI와 entrance rectangle이 틀리면 이후 계산은 모두 흔들린다.</p>
+              </div>
+              <div class="panel green">
+                <div class="big-number">2</div>
+                <h3>normal 방향 flux만 합산</h3>
+                <p>입구를 통과하는 방향성 있는 움직임이 핵심 신호다.</p>
+              </div>
+              <div class="panel amber">
+                <div class="big-number">3</div>
+                <h3>노이즈와 실제 움직임 균형</h3>
+                <p>조용한 영상은 낮게, 활동 영상은 살아 있게 만드는 설정을 찾는다.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="controls">
+        <button class="control-button" id="prevButton" aria-label="이전 슬라이드">‹</button>
+        <div>
+          <div class="progress-track" aria-hidden="true">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div class="counter" id="counter"></div>
+        </div>
+        <button class="control-button" id="nextButton" aria-label="다음 슬라이드">›</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const navList = document.getElementById("navList");
+    const progressBar = document.getElementById("progressBar");
+    const miniProgress = document.getElementById("miniProgress");
+    const counter = document.getElementById("counter");
+    const prevButton = document.getElementById("prevButton");
+    const nextButton = document.getElementById("nextButton");
+    let current = 0;
+
+    const navButtons = slides.map((slide, index) => {
+      const button = document.createElement("button");
+      button.className = "nav-item";
+      button.type = "button";
+      button.innerHTML = `<span>${index + 1}</span><span>${slide.dataset.title}</span>`;
+      button.addEventListener("click", () => showSlide(index));
+      navList.appendChild(button);
+      return button;
+    });
+
+    function showSlide(index) {
+      current = Math.max(0, Math.min(index, slides.length - 1));
+      slides.forEach((slide, slideIndex) => {
+        slide.classList.toggle("active", slideIndex === current);
+      });
+      navButtons.forEach((button, buttonIndex) => {
+        button.classList.toggle("active", buttonIndex === current);
+      });
+      const progress = ((current + 1) / slides.length) * 100;
+      progressBar.style.width = `${progress}%`;
+      miniProgress.style.width = `${progress}%`;
+      counter.textContent = `${current + 1} / ${slides.length}`;
+      prevButton.disabled = current === 0;
+      nextButton.disabled = current === slides.length - 1;
+    }
+
+    prevButton.addEventListener("click", () => showSlide(current - 1));
+    nextButton.addEventListener("click", () => showSlide(current + 1));
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
+        event.preventDefault();
+        showSlide(current + 1);
+      }
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault();
+        showSlide(current - 1);
+      }
+    });
+
+    showSlide(0);
+  </script>
+</body>
+</html>
