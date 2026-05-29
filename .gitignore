@@ -11,3 +11,5 @@ wheels/
 
 videos/*
 bee_count_output/*
+
+.DS_Store
