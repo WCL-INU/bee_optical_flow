@@ -737,6 +737,38 @@
       box-shadow: var(--shadow);
     }
 
+    .scatter-figures {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .scatter-figure {
+      margin: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .scatter-figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .scatter-figure figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
     .output-list {
       display: grid;
       gap: 12px;
@@ -950,6 +982,7 @@
       .hero-layout,
       .file-map,
       .video-panel,
+      .scatter-figures,
       .compare-columns,
       .focus-list,
       .roadmap {
@@ -1333,32 +1366,35 @@ filtered_out_count_est =
           </div>
         </section>
 
-        <!-- <section class="slide" data-title="실제 산출물">
+        <section class="slide" data-title="실측 비교">
           <div class="slide-inner">
             <div class="slide-header">
-              <div class="slide-kicker">Output preview</div>
-              <h2>결과는 CSV만이 아니라 preview video로 검증한다</h2>
-              <p class="lead">현재 로컬에는 `ANU-25-summer-11_20260328_130000` 영상의 처리 결과가 있다.</p>
+              <div class="slide-kicker">Measured comparison</div>
+              <h2>옵티컬 플로우 추정값과 실제 계수값 비교</h2>
+              <p class="lead">하나의 벌통에 대해 optical flow로 계산한 결과값을 x축에, 사람이 실제 계수한 이출입량을 y축에 둔 산포도다.</p>
             </div>
-            <div class="video-panel">
-              <video src="bee_count_output/persistence_filter/ANU-25-summer-11_20260328_130000_preview.mp4" controls muted playsinline></video>
-              <div class="output-list">
-                <div class="output-item">
-                  <strong>preview.mp4</strong>
-                  <span>ROI, 입구 사각형, counting band, filtered flow arrow를 눈으로 확인한다.</span>
-                </div>
-                <div class="output-item">
-                  <strong>frame_flux.csv</strong>
-                  <span>frame별 raw/filtered IN/OUT flux와 candidate pixel 수를 확인한다.</span>
-                </div>
-                <div class="output-item">
-                  <strong>window_3sec.csv</strong>
-                  <span>3초 window별 flux 합과 count estimate를 확인한다.</span>
-                </div>
-              </div>
-            </div>
+            <!--
+              나중에 제대로 된 preview 영상을 다시 넣고 싶을 때:
+              1. 브라우저에서 바로 재생 가능한 H.264 MP4 파일을 docs/ 안이나 docs/assets/ 안에 둔다.
+              2. OpenCV가 만든 MP4가 안 열리면 아래처럼 웹 호환 포맷으로 변환한다.
+                 ffmpeg -i input.mp4 -c:v libx264 -pix_fmt yuv420p -movflags +faststart -an docs/bee_preview.mp4
+              3. 아래 scatter-figures 블록을 잠시 주석 처리하거나 지우고, 대신 다음 태그를 넣는다.
+                 <video src="bee_preview.mp4" controls muted playsinline preload="metadata"></video>
+              4. src 경로는 presentation.html 기준 상대 경로로 적는다. 로컬 파일 경로가 불안정하면 docs/에서
+                 `python -m http.server`를 실행한 뒤 http://localhost:8000/presentation.html 로 확인한다.
+            -->
+            <!-- <div class="scatter-figures"> -->
+              <figure class="scatter-figure">
+                <img src="Figure_1.png" alt="옵티컬 플로우 계산값과 실제 계수 이입량을 비교한 첫 번째 산포도">
+                <figcaption>Figure 1. Optical flow 계산값과 실제 계수 이입량의 관계.</figcaption>
+              </figure>
+              <figure class="scatter-figure">
+                <img src="Figure_2.png" alt="옵티컬 플로우 계산값과 실제 계수 이출량을 비교한 두 번째 산포도">
+                <figcaption>Figure 2. 같은 벌통 데이터에서 이출량의 관계.</figcaption>
+              </figure>
+            <!-- </div> -->
           </div>
-        </section> -->
+        </section>
 
         <section class="slide" data-title="파라미터">
           <div class="slide-inner">
