@@ -1,34 +1,23 @@
 
-ANU-25-summer-2_20260328_130000.mp4
+ANU-25-summer-3
 
-ANU-25-summer-3_20260328_130000.mp4
+ANU-25-summer-5
 
-ANU-25-summer-4_20260328_130000.mp4
+ANU-25-summer-7
 
-ANU-25-summer-5_20260328_130000.mp4
+ANU-25-summer-9
 
-ANU-25-summer-6_20260328_130000.mp4
+ANU-25-summer-12
 
-ANU-25-summer-8_20260328_130000.mp4
+ANU-25-summer-13
 
-ANU-25-summer-10_20260328_130000.mp4
+ANU-25-summer-14
 
-ANU-25-summer-11_20260328_130000.mp4
-x1, y1, x2, y2 = 1270, 1060, 1640, 1232
-x3, y3, x4, y4 = 1370, 1160, 1600, 1232
+ANU-25-summer-15
 
-ANU-25-summer-12_20260328_130000.mp4
+ANU-25-summer-16
 
-ANU-25-summer-13_20260328_130000.mp4
-
-ANU-25-summer-14_20260328_130000.mp4
-
-ANU-25-summer-15_20260328_130000.mp4
-
-ANU-25-summer-16_20260328_130000.mp4
-
-ANU-25-summer-19_20260328_130000.mp4
-
-ANU-25-summer-20_20260328_130000.mp4
-
+ANU-25-summer-20
+x1, y1, x2, y2 = 1020, 980, 1420, 1280
+x3, y3, x4, y4 = 1120, 1080, 1320, 1180
 
