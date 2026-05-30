@@ -13,6 +13,8 @@
 
 ### IN count 모델
 
+![IN count 모델](in_count.png)
+
 ```text
 in = 0.0000116523 * total_filtered_in_flux + 6.1251
 ```
@@ -20,6 +22,8 @@ in = 0.0000116523 * total_filtered_in_flux + 6.1251
 `total_filtered_in_flux`가 100,000 증가하면 예측되는 `in` count는 약 1.17마리 증가한다.
 
 ### OUT count 모델
+
+![OUT count 모델](out_count.png)
 
 ```text
 out = 0.0000162326 * total_filtered_out_flux + 4.9832
