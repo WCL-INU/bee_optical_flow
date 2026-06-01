@@ -473,6 +473,10 @@ def process_video(video_path, output_dir, config):
     last_time_sec = 0.0
 
     while True:
+        # For testing, limit to first 2 minutes (assuming 24 fps -> 2880 frames)
+        if frame_idx >= 2880: 
+            break
+
         ret, frame = cap.read()
         if not ret:
             break
