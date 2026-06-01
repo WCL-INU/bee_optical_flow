@@ -5,14 +5,19 @@ from pathlib import Path
 import pandas as pd
 
 try:
-    from src.bee_entrance_count import Config, compare_videos, process_video
+    from src.bee_entrance_count import (
+        Config,
+        compare_videos,
+        process_video,
+        save_timing_summary,
+    )
 except ModuleNotFoundError:
-    from bee_entrance_count import Config, compare_videos, process_video
+    from bee_entrance_count import Config, compare_videos, process_video, save_timing_summary
 
 
-VIDEO_DIR = Path("videos")
+VIDEO_DIR = Path("videos/videos")
 OUTPUT_ROOT = Path("bee_count_output") / "runs"
-DEFAULT_PATTERN = "ANU-25-summer-6_*.mp4"
+DEFAULT_PATTERN = "ANU-25-summer-20_*.mp4"
 
 
 PRESETS = {
@@ -381,7 +386,9 @@ def run_batch(videos, output_dir, config):
     summary_df = pd.DataFrame(summaries)
     summary_path = output_dir / "batch_summary.csv"
     summary_df.to_csv(summary_path, index=False)
+    timing_path = save_timing_summary(summaries, output_dir)
     print(f"batch summary: {summary_path}")
+    print(f"timing summary: {timing_path}")
     return summary_df
 
 

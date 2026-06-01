@@ -1,4 +1,5 @@
 import argparse
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,15 +10,15 @@ import pandas as pd
 
 @dataclass
 class Config:
-    roi_x1: int = 1300
-    roi_y1: int = 1000
-    roi_x2: int = 1640
-    roi_y2: int = 1232
+    roi_x1: int = 1020
+    roi_y1: int = 980
+    roi_x2: int = 1420
+    roi_y2: int = 1280
 
-    ent_x1: int = 1400
-    ent_y1: int = 1200
-    ent_x2: int = 1600
-    ent_y2: int = 1232
+    ent_x1: int = 1120
+    ent_y1: int = 1080
+    ent_x2: int = 1320
+    ent_y2: int = 1180
 
     boundary_band_px: int = 8
     flow_mag_threshold: float = 0.30
@@ -57,6 +58,27 @@ FARNEBACK_PARAMS = dict(
     poly_sigma=1.2,
     flags=0,
 )
+
+TIMING_COLUMNS = [
+    "video",
+    "video_path",
+    "duration_sec",
+    "processed_frame_pairs",
+    "preprocessing_time_sec",
+    "optical_flow_time_sec",
+    "preprocessing_time_per_pair_sec",
+    "optical_flow_time_per_pair_sec",
+]
+
+
+def save_timing_summary(summaries, output_dir, filename="processing_timing.csv"):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    timing_df = pd.DataFrame(summaries)
+    available_columns = [column for column in TIMING_COLUMNS if column in timing_df.columns]
+    timing_path = output_dir / filename
+    timing_df[available_columns].to_csv(timing_path, index=False)
+    return timing_path
 
 
 def load_video_info(video_path):
@@ -403,7 +425,13 @@ def process_video(video_path, output_dir, config):
         cap.release()
         raise RuntimeError(f"Cannot read first frame: {video_path}")
 
+    preprocessing_time_sec = 0.0
+    optical_flow_time_sec = 0.0
+
+    preprocess_start = time.perf_counter()
     first_roi = crop_roi(first_frame, roi_rect)
+    preprocessing_time_sec += time.perf_counter() - preprocess_start
+
     roi_h, roi_w = first_roi.shape[:2]
     entrance_rect = (
         config.ent_x1 - roi_rect[0],
@@ -435,7 +463,10 @@ def process_video(video_path, output_dir, config):
         cap.release()
         raise RuntimeError(f"Cannot open preview writer: {preview_path}")
 
+    preprocess_start = time.perf_counter()
     prev_gray = prepare_gray(first_roi, config)
+    preprocessing_time_sec += time.perf_counter() - preprocess_start
+
     persistence = np.zeros((roi_h, roi_w), dtype=np.float32)
     frame_rows = []
     frame_idx = 1
@@ -446,9 +477,15 @@ def process_video(video_path, output_dir, config):
         if not ret:
             break
 
+        preprocess_start = time.perf_counter()
         roi = crop_roi(frame, roi_rect)
         gray = prepare_gray(roi, config)
+        preprocessing_time_sec += time.perf_counter() - preprocess_start
+
+        flow_start = time.perf_counter()
         flow = compute_optical_flow(prev_gray, gray)
+        optical_flow_time_sec += time.perf_counter() - flow_start
+
         if config.use_global_flow_compensation:
             flow, _, _ = compensate_global_flow(flow, background_mask)
         raw_data = compute_raw_flux(flow, counting_boundary_band, normal_x, normal_y, config)
@@ -533,11 +570,25 @@ def process_video(video_path, output_dir, config):
         total_filtered_traffic_flux,
         config.epsilon,
     )
+    processed_frame_pairs = len(frame_rows)
+    preprocessing_time_per_pair_sec = preprocessing_time_sec / max(
+        processed_frame_pairs,
+        1,
+    )
+    optical_flow_time_per_pair_sec = optical_flow_time_sec / max(
+        processed_frame_pairs,
+        1,
+    )
 
     return {
         "video": video_path.name,
         "video_path": str(video_path),
         "duration_sec": last_time_sec,
+        "processed_frame_pairs": processed_frame_pairs,
+        "preprocessing_time_sec": preprocessing_time_sec,
+        "optical_flow_time_sec": optical_flow_time_sec,
+        "preprocessing_time_per_pair_sec": preprocessing_time_per_pair_sec,
+        "optical_flow_time_per_pair_sec": optical_flow_time_per_pair_sec,
         "blur_kernel": config.blur_kernel,
         "use_persistence_filter": config.use_persistence_filter,
         "persist_decay": config.persist_decay,
@@ -612,6 +663,8 @@ def compare_videos(video_paths, output_dir, config):
     ]
     summary_df = pd.DataFrame(summaries)
     summary_df[summary_columns].to_csv(output_dir / "comparison_summary.csv", index=False)
+    timing_path = save_timing_summary(summaries, output_dir)
+    print(f"timing summary: {timing_path}")
 
     for row in summaries:
         print(
@@ -717,10 +770,12 @@ def main():
 
     if args.video is not None:
         result, _, _ = process_video(args.video, args.output_dir, config)
+        timing_path = save_timing_summary([result], args.output_dir)
         print("Done.")
         print(f"preview video: {result['preview_video']}")
         print(f"frame csv    : {result['frame_csv']}")
         print(f"window csv   : {result['window_csv']}")
+        print(f"timing csv   : {timing_path}")
         return
 
     if len(args.compare) < 2:
