@@ -60,15 +60,15 @@ When enabled, the already persistence-filtered candidate mask is split with `con
 
 No coherence, mean magnitude, aspect-ratio, bounding-box, morphology, or event filters are used in this version. Area filtering is only a final optional cleanup step.
 
-## 6. Bottom Boundary Exclusion
+## 6. Four-Boundary Counting
 
-The entrance bottom edge touches the bottom of the ROI, so it is excluded from counting. Only the top, left, and right entrance boundaries are used.
+The current counting policy accumulates boundary-normal optical flow on all four entrance edges: top, bottom, left, and right. Even when the entrance bottom edge touches the bottom of the ROI, the bottom edge is included so that the preview and CSV outputs follow the same 4-direction accumulation rule.
 
 The preview shows:
 
 - full entrance rectangle as a thin red outline
-- actual counting boundary band on top/left/right in cyan
-- bottom edge as gray or visually excluded from the cyan band
+- actual counting boundary band on top/bottom/left/right in cyan
+- a separated information panel for frame time, raw/filtered flux, candidate pixel counts, and persistence value
 
 ## 7. Test Method
 

@@ -41,6 +41,7 @@ class Config:
     balance_ratio_threshold: float = 0.70
 
     preview_stride: int = 1
+    preview_panel_width: int = 360
     arrow_step: int = 10
     arrow_scale: float = 5.0
 
@@ -143,27 +144,41 @@ def build_entrance_mask(roi_shape, entrance_rect):
 
 
 def build_counting_boundary_band(entrance_mask, entrance_rect, config):
+    roi_h, roi_w = entrance_mask.shape
     rect_x1, rect_y1, rect_x2, rect_y2 = entrance_rect
-
-    inside_dist = cv2.distanceTransform(entrance_mask, cv2.DIST_L2, 5)
-    outside_dist = cv2.distanceTransform(255 - entrance_mask, cv2.DIST_L2, 5)
-    signed_dist = inside_dist - outside_dist
-
-    boundary_band = np.abs(signed_dist) <= config.boundary_band_px
-
     yy, xx = np.indices(entrance_mask.shape)
-    bottom_exclude = (
-        (yy >= rect_y2 - config.boundary_band_px - 2)
-        & (xx >= rect_x1 - config.boundary_band_px)
-        & (xx <= rect_x2 + config.boundary_band_px)
-    )
-    boundary_band[bottom_exclude] = False
 
-    grad_x = cv2.Sobel(signed_dist, cv2.CV_32F, 1, 0, ksize=3)
-    grad_y = cv2.Sobel(signed_dist, cv2.CV_32F, 0, 1, ksize=3)
-    norm = np.sqrt(grad_x * grad_x + grad_y * grad_y) + 1e-6
-    normal_x = grad_x / norm
-    normal_y = grad_y / norm
+    band = int(config.boundary_band_px)
+    edge_left = rect_x1
+    edge_right = rect_x2 - 1
+    edge_top = rect_y1
+    edge_bottom = rect_y2 - 1
+
+    expanded_rect = (
+        (xx >= max(0, edge_left - band))
+        & (xx <= min(roi_w - 1, edge_right + band))
+        & (yy >= max(0, edge_top - band))
+        & (yy <= min(roi_h - 1, edge_bottom + band))
+    )
+
+    distances = np.stack(
+        [
+            np.abs(yy - edge_top),
+            np.abs(yy - edge_bottom),
+            np.abs(xx - edge_left),
+            np.abs(xx - edge_right),
+        ],
+        axis=0,
+    )
+    nearest_edge = np.argmin(distances, axis=0)
+    boundary_band = expanded_rect & (np.min(distances, axis=0) <= band)
+
+    normal_x = np.zeros(entrance_mask.shape, dtype=np.float32)
+    normal_y = np.zeros(entrance_mask.shape, dtype=np.float32)
+    normal_y[boundary_band & (nearest_edge == 0)] = 1.0
+    normal_y[boundary_band & (nearest_edge == 1)] = -1.0
+    normal_x[boundary_band & (nearest_edge == 2)] = 1.0
+    normal_x[boundary_band & (nearest_edge == 3)] = -1.0
 
     return boundary_band, normal_x, normal_y
 
@@ -341,8 +356,8 @@ def draw_preview(
     vis = roi.copy()
     h, w = vis.shape[:2]
     rect_x1, rect_y1, rect_x2, rect_y2 = entrance_rect
-    draw_x2 = min(rect_x2, w - 1)
-    draw_y2 = min(rect_y2, h - 1)
+    draw_x2 = min(rect_x2 - 1, w - 1)
+    draw_y2 = min(rect_y2 - 1, h - 1)
 
     raw_overlay = vis.copy()
     raw_overlay[raw_candidate] = (0, 220, 220)
@@ -353,7 +368,6 @@ def draw_preview(
     vis = cv2.addWeighted(vis, 0.86, band_overlay, 0.28, 0)
 
     cv2.rectangle(vis, (rect_x1, rect_y1), (draw_x2, draw_y2), (0, 0, 255), 1)
-    cv2.line(vis, (rect_x1, draw_y2), (draw_x2, draw_y2), (150, 150, 150), 2)
 
     dx = raw_data["dx"]
     dy = raw_data["dy"]
@@ -369,41 +383,60 @@ def draw_preview(
             color = (0, 255, 0) if normal_flow[yy, xx] > 0 else (255, 0, 0)
             cv2.arrowedLine(vis, (xx, yy), end, color, 1, tipLength=0.3)
 
-    lines = [
-        f"t={time_sec:.2f}s",
-        f"raw IN/OUT={frame_row['raw_in_flux']:.1f}/{frame_row['raw_out_flux']:.1f}",
-        (
-            "filtered IN/OUT="
-            f"{frame_row['filtered_in_flux']:.1f}/{frame_row['filtered_out_flux']:.1f}"
-        ),
-        (
-            "pixels raw/filtered="
-            f"{frame_row['raw_candidate_pixels']}/{frame_row['filtered_candidate_pixels']}"
-        ),
-        f"persistence max={frame_row['persistence_max']:.2f}",
-        "counting band: top/left/right only",
-    ]
-    colors = [
-        (255, 255, 255),
-        (0, 220, 220),
-        (255, 255, 255),
-        (255, 255, 255),
-        (255, 255, 255),
-        (255, 255, 0),
-    ]
-    for idx, (text, color) in enumerate(zip(lines, colors)):
+    panel_w = max(1, int(config.preview_panel_width))
+    panel = np.full((h, panel_w, 3), (32, 34, 36), dtype=np.uint8)
+    cv2.rectangle(panel, (0, 0), (panel_w - 1, h - 1), (42, 45, 48), 1)
+    cv2.rectangle(panel, (0, 0), (panel_w - 1, 34), (20, 23, 26), -1)
+
+    def put_panel_text(text, y, color=(235, 235, 235), scale=0.45, thickness=1):
         cv2.putText(
-            vis,
+            panel,
             text,
-            (10, 24 + idx * 23),
+            (14, y),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.52,
+            scale,
             color,
-            2,
+            thickness,
             cv2.LINE_AA,
         )
 
-    return vis
+    put_panel_text("Bee entrance preview", 23, (255, 255, 255), 0.52, 1)
+    put_panel_text(f"t = {time_sec:.2f}s", 52)
+    put_panel_text("Boundary: top / bottom / left / right", 72, (255, 255, 0), 0.42)
+
+    put_panel_text("Raw flux", 101, (0, 220, 220), 0.47)
+    put_panel_text(
+        f"IN {frame_row['raw_in_flux']:8.1f}   OUT {frame_row['raw_out_flux']:8.1f}",
+        121,
+        (235, 235, 235),
+        0.42,
+    )
+
+    put_panel_text("Filtered flux", 150, (0, 255, 0), 0.47)
+    put_panel_text(
+        (
+            f"IN {frame_row['filtered_in_flux']:8.1f}   "
+            f"OUT {frame_row['filtered_out_flux']:8.1f}"
+        ),
+        170,
+        (235, 235, 235),
+        0.42,
+    )
+
+    put_panel_text(
+        (
+            f"Pixels raw/filter: {frame_row['raw_candidate_pixels']} / "
+            f"{frame_row['filtered_candidate_pixels']}"
+        ),
+        199,
+        (235, 235, 235),
+        0.42,
+    )
+    put_panel_text(f"Persistence max: {frame_row['persistence_max']:.2f}", 219, scale=0.42)
+
+    canvas = np.concatenate([vis, panel], axis=1)
+    cv2.line(canvas, (w, 0), (w, h - 1), (12, 12, 12), 2)
+    return canvas
 
 
 def process_video(video_path, output_dir, config):
@@ -457,7 +490,7 @@ def process_video(video_path, output_dir, config):
         str(preview_path),
         cv2.VideoWriter_fourcc(*"mp4v"),
         preview_fps,
-        (roi_w, roi_h),
+        (roi_w + max(1, int(config.preview_panel_width)), roi_h),
     )
     if not writer.isOpened():
         cap.release()
@@ -742,6 +775,7 @@ def parse_args():
     parser.add_argument("--flow-mag-threshold", type=float, default=0.30)
     parser.add_argument("--normal-flow-threshold", type=float, default=0.08)
     parser.add_argument("--preview-stride", type=int, default=1)
+    parser.add_argument("--preview-panel-width", type=int, default=360)
     parser.add_argument("--warn-ratio-between-videos", type=float, default=2.0)
     parser.add_argument("--warn-max-window-filtered-traffic-count-est", type=float, default=3.0)
     return parser.parse_args()
@@ -761,6 +795,7 @@ def config_from_args(args):
         flow_mag_threshold=args.flow_mag_threshold,
         normal_flow_threshold=args.normal_flow_threshold,
         preview_stride=max(1, args.preview_stride),
+        preview_panel_width=max(1, args.preview_panel_width),
         warn_ratio_between_videos=args.warn_ratio_between_videos,
         warn_max_window_filtered_traffic_count_est=(
             args.warn_max_window_filtered_traffic_count_est

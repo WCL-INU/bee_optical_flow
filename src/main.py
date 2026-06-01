@@ -223,6 +223,7 @@ def build_config(args):
         "persist_threshold",
         "min_flow_component_area",
         "preview_stride",
+        "preview_panel_width",
         "warn_ratio_between_videos",
         "warn_max_window_filtered_traffic_count_est",
         "balance_ratio_threshold",
@@ -574,6 +575,7 @@ def parse_args():
     parser.add_argument("--use-bidirectional-balance-filter", action="store_true")
     parser.add_argument("--balance-ratio-threshold", type=float)
     parser.add_argument("--preview-stride", type=int)
+    parser.add_argument("--preview-panel-width", type=int)
     parser.add_argument("--warn-ratio-between-videos", type=float)
     parser.add_argument("--warn-max-window-filtered-traffic-count-est", type=float)
 

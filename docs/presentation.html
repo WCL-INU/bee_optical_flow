@@ -387,7 +387,8 @@
 
     .boundary-top,
     .boundary-left,
-    .boundary-right {
+    .boundary-right,
+    .boundary-bottom {
       position: absolute;
       background: rgba(0, 215, 215, 0.65);
     }
@@ -402,15 +403,22 @@
     .boundary-left {
       left: -8px;
       top: -8px;
-      bottom: 0;
+      bottom: -8px;
       width: 10px;
     }
 
     .boundary-right {
       right: -8px;
       top: -8px;
-      bottom: 0;
+      bottom: -8px;
       width: 10px;
+    }
+
+    .boundary-bottom {
+      left: -8px;
+      right: -8px;
+      bottom: -8px;
+      height: 10px;
     }
 
     .mock-label {
@@ -522,7 +530,7 @@
       content: "";
       position: absolute;
       top: -16px;
-      bottom: 0;
+      bottom: -16px;
       width: 16px;
       background: rgba(0, 215, 215, 0.56);
     }
@@ -546,11 +554,11 @@
 
     .demo-bottom {
       position: absolute;
-      left: 0;
-      right: 0;
-      bottom: -5px;
-      height: 6px;
-      background: #8c8982;
+      left: -16px;
+      right: -16px;
+      bottom: -16px;
+      height: 16px;
+      background: rgba(0, 215, 215, 0.56);
     }
 
     .arrow {
@@ -1074,11 +1082,12 @@
                 <div class="boundary-top"></div>
                 <div class="boundary-left"></div>
                 <div class="boundary-right"></div>
+                <div class="boundary-bottom"></div>
               </div>
               <div class="bee-dot one"></div>
               <div class="bee-dot two"></div>
               <div class="bee-dot three"></div>
-              <div class="mock-label">cyan: counting band / red: entrance</div>
+              <div class="mock-label">cyan: 4-edge counting band / red: entrance</div>
             </div>
           </div>
         </section>
@@ -1185,8 +1194,8 @@ mag = sqrt(dx * dx + dy * dy)</code></pre>
               <div class="arrow in1" style="left: 120px; top: 126px; transform: rotate(22deg);"></div>
               <div class="arrow in2" style="left: 420px; top: 112px; transform: rotate(108deg);"></div>
               <div class="arrow out" style="right: 126px; bottom: 92px; transform: rotate(205deg);"></div>
-              <div class="board-note a">top/left/right만 counting</div>
-              <div class="board-note b">bottom은 제외</div>
+              <div class="board-note a">top/bottom/left/right counting</div>
+              <div class="board-note b">4방향 flux 누적</div>
               <div class="board-note c">normal 방향 projection으로 IN/OUT 판정</div>
             </div>
             <div class="slide-header">
@@ -1250,7 +1259,7 @@ mag = sqrt(dx * dx + dy * dy)</code></pre>
             <div class="grid">
               <div class="panel amber">
                 <h3>1. boundary band</h3>
-                <p>입구 주변 top/left/right 얇은 영역에 있는가?</p>
+                <p>입구 주변 top/bottom/left/right 얇은 영역에 있는가?</p>
               </div>
               <div class="panel green">
                 <h3>2. magnitude</h3>
@@ -1409,6 +1418,7 @@ filtered_out_count_est =
                 <pre><code>blur_kernel = 3
 flow_mag_threshold = 0.30
 normal_flow_threshold = 0.08
+preview_panel_width = 360
 use_persistence_filter = True
 persist_decay = 0.65
 persist_threshold = 1.3
@@ -1438,7 +1448,7 @@ min_flow_component_area = 200</code></pre>
                 <h3>Preview에서 볼 것</h3>
                 <ul>
                   <li>ROI와 entrance rectangle이 실제 입구에 맞는가?</li>
-                  <li>cyan counting band가 top/left/right에만 있는가?</li>
+                  <li>cyan counting band가 top/bottom/left/right에 보이는가?</li>
                   <li>flow arrow 방향이 실제 벌 이동과 맞는가?</li>
                   <li>활동 구간에서 실제 움직임이 필터에 지워지지 않는가?</li>
                 </ul>

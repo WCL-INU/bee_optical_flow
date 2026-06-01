@@ -17,7 +17,7 @@
 
 1. 영상에서 벌통 입구 주변 ROI만 잘라낸다.
 2. ROI 안에 고정된 입구 사각형을 둔다.
-3. 입구의 top, left, right 경계 주변만 counting boundary로 사용한다.
+3. 입구의 top, bottom, left, right 네 경계 주변을 counting boundary로 사용한다.
 4. 연속 프레임 사이의 Farneback optical flow를 계산한다.
 5. 움직임 벡터를 입구 경계의 normal 방향으로 투영해 `IN`/`OUT` flux를 계산한다.
 6. Gaussian blur, temporal persistence filter, connected-component area filter로 노이즈를 줄인다.
@@ -134,7 +134,7 @@ flow[y, x] = (dx, dy)
 
 입구 사각형 전체가 아니라, 입구의 경계 주변 얇은 띠만 counting 영역으로 사용한다.
 
-현재는 top, left, right 경계만 사용한다. bottom 경계는 ROI 하단과 맞닿아 있어 실제 통과 경계로 보기 어렵기 때문이다.
+현재는 top, bottom, left, right 네 경계를 모두 사용한다. bottom 경계가 ROI 하단과 맞닿아 있더라도 같은 4방향 누적 규칙으로 optical-flow flux를 합산한다.
 
 Normal vector는 경계에 수직인 방향 벡터다. 움직임 벡터를 이 normal 방향으로 투영하면, 움직임이 입구 안쪽으로 향하는지 바깥쪽으로 향하는지 판단할 수 있다.
 
@@ -324,6 +324,7 @@ filtered_out_count_est = filtered_out_flux_sum / out_bee_flux_unit
 | `boundary_band_px` | `8` | 입구 경계 주변 counting band 폭 |
 | `flow_mag_threshold` | `0.30` | 움직임 크기 최소값 |
 | `normal_flow_threshold` | `0.08` | normal 방향 움직임 최소값 |
+| `preview_panel_width` | `360` | preview 영상 오른쪽 정보 패널 폭 |
 | `blur_kernel` | `3` | blur 강도 |
 | `use_persistence_filter` | `True` | persistence filter 사용 |
 | `persist_decay` | `0.65` | persistence 감쇠율 |
@@ -372,7 +373,7 @@ python -m src.main --mode tune --preset selected --truth-csv videos/entrance.csv
 
 | 파일 | 의미 |
 | --- | --- |
-| `{video_stem}_preview.mp4` | ROI, 입구 사각형, counting band, 후보 flow를 시각화한 영상 |
+| `{video_stem}_preview.mp4` | ROI, 입구 사각형, 4방향 counting band, 후보 flow, 별도 정보 패널을 시각화한 영상 |
 | `{video_stem}_frame_flux.csv` | 프레임별 raw/filtered IN/OUT flux |
 | `{video_stem}_window_3sec.csv` | 3초 window별 flux와 count estimate |
 
@@ -419,7 +420,7 @@ Preview video에서 확인할 것:
 
 - ROI가 실제 벌통 입구 주변을 잘 포함하는가?
 - 빨간 입구 사각형이 실제 입구와 맞는가?
-- cyan counting band가 top, left, right 경계에만 보이는가?
+- cyan counting band가 top, bottom, left, right 네 경계에 보이는가?
 - flow arrow가 실제 벌 이동 방향과 맞는가?
 - 노이즈 구간에서 filtered candidate가 과도하게 남지 않는가?
 - 활동 구간에서 실제 벌 움직임이 filter 때문에 사라지지 않는가?

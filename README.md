@@ -5,8 +5,8 @@
 ## 현재 진행 요약
 
 - Farneback optical flow 기반으로 ROI 내부 움직임을 계산했습니다.
-- 벌통 입구 사각형의 top, left, right 경계만 counting boundary로 사용하도록 구성했습니다.
-- 입구 하단은 ROI 하단과 맞닿아 있어 실제 통과 경계로 보기 어렵기 때문에 counting에서 제외했습니다.
+- 벌통 입구 사각형의 top, bottom, left, right 네 경계를 모두 counting boundary로 사용하도록 구성했습니다.
+- 입구 하단이 ROI 하단과 맞닿아 있더라도 bottom edge 주변의 optical flow를 함께 누적해 4방향 출입 flux를 계산합니다.
 - 프레임 단위 raw flux를 그대로 누적하면 노이즈와 느린 움직임이 과대 계수되는 문제가 있어, 먼저 flux 신호를 안정화하는 방향으로 전환했습니다.
 - Gaussian blur, temporal persistence filter, optional connected-component area filter를 추가해 짧은 optical-flow 스파이크와 작은 노이즈 성분을 줄였습니다.
 - `src/main.py`에 batch, compare, groups, evaluate, tune 실행 모드를 추가해 여러 영상과 파라미터 preset을 비교할 수 있게 했습니다.
@@ -49,13 +49,13 @@
 1. 입력 영상을 OpenCV로 읽습니다.
 2. 고정 ROI를 crop합니다.
 3. 전체 프레임 기준 entrance rectangle을 ROI 좌표로 변환합니다.
-4. entrance mask와 signed distance transform으로 boundary normal vector를 계산합니다.
-5. 입구 top/left/right 주변 boundary band만 counting 영역으로 사용합니다.
+4. entrance rectangle의 네 변을 기준으로 boundary band와 inward normal vector를 계산합니다.
+5. 입구 top/bottom/left/right 주변 boundary band를 counting 영역으로 사용합니다.
 6. 연속 프레임 사이의 Farneback optical flow를 계산합니다.
 7. flow를 boundary normal 방향으로 투영해 `IN`/`OUT` flux를 분리합니다.
 8. raw candidate mask에 persistence filter와 선택적 component area filter를 적용합니다.
 9. raw/filtered flux를 프레임 CSV로 저장하고, 3초 window 단위 count estimate를 생성합니다.
-10. ROI preview video에 entrance rectangle, counting band, flow 후보, flux 값을 시각화합니다.
+10. ROI preview video에 entrance rectangle, counting band, flow 후보를 시각화하고, flux 값은 별도 정보 패널에 표시합니다.
 
 ## 기본 좌표와 파라미터
 
@@ -73,6 +73,7 @@ ent_x1, ent_y1, ent_x2, ent_y2 = 1400, 1200, 1600, 1232
 | `boundary_band_px` | `8` | 입구 경계 주변 counting band 폭 |
 | `flow_mag_threshold` | `0.30` | 후보 pixel로 인정할 최소 flow magnitude |
 | `normal_flow_threshold` | `0.08` | 경계 normal 방향 최소 flow |
+| `preview_panel_width` | `360` | preview 영상 오른쪽 정보 패널 폭 |
 | `blur_kernel` | `3` | grayscale frame Gaussian blur kernel |
 | `use_persistence_filter` | `True` | 짧은 one-frame noise 억제 |
 | `persist_decay` | `0.65` | persistence map 감쇠율 |
@@ -147,9 +148,9 @@ python -m src.main --mode batch --preset selected --dry-run
 
 단일 영상 처리 시 주요 파일:
 
-- `{video_stem}_entrance_count_preview.mp4`: ROI preview 영상
-- `{video_stem}_entrance_flux_frame.csv`: 프레임별 raw/filtered flux
-- `{video_stem}_entrance_count_3sec.csv`: 3초 window별 count estimate
+- `{video_stem}_preview.mp4`: ROI와 별도 정보 패널을 함께 담은 preview 영상
+- `{video_stem}_frame_flux.csv`: 프레임별 raw/filtered flux
+- `{video_stem}_window_3sec.csv`: 3초 window별 count estimate
 
 비교 및 batch 실행 시 주요 파일:
 

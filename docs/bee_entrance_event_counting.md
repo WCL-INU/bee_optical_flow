@@ -15,26 +15,26 @@ The previous approach accumulated frame-level boundary flux directly into IN/OUT
 1. Crop the full video frame to the configured ROI.
 2. Convert the entrance rectangle from full-frame coordinates into ROI coordinates.
 3. Create an entrance rectangle mask.
-4. Build a signed distance transform from the mask.
-5. Create boundary normal maps from the signed distance gradient.
+4. Create boundary bands for the four rectangle edges.
+5. Create inward normal maps for the top, bottom, left, and right edges.
 6. Create a boundary band around the entrance rectangle.
-7. Exclude the bottom boundary from the counting band.
+7. Use all four entrance boundaries for counting.
 8. Compute Farneback optical flow between consecutive ROI frames.
 9. Project flow onto the boundary normal direction.
-10. Compute frame-level IN and OUT flux on the top, left, and right boundary bands only.
+10. Compute frame-level IN and OUT flux on the top, bottom, left, and right boundary bands.
 11. Feed IN and OUT flux time series into separate hysteresis event detectors.
 12. Convert each completed event into an estimated bee count.
 13. Aggregate event counts into 3-second windows.
 
 ## 4. IN/OUT definition
 
-The signed distance gradient points from outside the entrance mask toward the inside. A positive projected normal flow means motion from outside the entrance rectangle toward the inside, and is defined as IN.
+The boundary normal points from outside the entrance rectangle toward the inside. A positive projected normal flow means motion from outside the entrance rectangle toward the inside, and is defined as IN.
 
 A negative projected normal flow means motion from inside the entrance rectangle toward the outside, and is defined as OUT.
 
 If visual inspection shows that the biological interpretation is reversed for a specific camera setup, the result can be interpreted by swapping the IN and OUT labels.
 
-## 5. Why the bottom boundary is excluded
+## 5. Four-boundary accumulation
 
 The configured entrance rectangle is:
 
@@ -43,7 +43,7 @@ ROI_X1, ROI_Y1, ROI_X2, ROI_Y2 = 1300, 1000, 1640, 1232
 ENT_X1, ENT_Y1, ENT_X2, ENT_Y2 = 1400, 1200, 1600, 1232
 ```
 
-Here `ENT_Y2` equals `ROI_Y2`, so the entrance bottom edge touches the bottom of the ROI and there is no extra image area below it. This bottom edge should not be treated as a real crossing boundary. Counting uses only the entrance top, left, and right boundary bands.
+Here `ENT_Y2` equals `ROI_Y2`, so the entrance bottom edge touches the bottom of the ROI. The current counting policy still includes this bottom edge and accumulates optical-flow flux on all four rectangle boundaries. This makes the preview and CSV summaries match the current 4-direction accumulation rule.
 
 ## 6. Event detector design
 
@@ -90,7 +90,7 @@ Very small events can be discarded when `count_est < 0.3`.
 
 Outputs are written to `bee_count_output/`.
 
-- `entrance_count_preview.mp4`: ROI preview video with the entrance rectangle, counting boundary band, flow arrows, flux values, detector states, and cumulative event counts.
+- `entrance_count_preview.mp4`: ROI preview video with the entrance rectangle, four-edge counting boundary band, flow arrows, and a separated text panel for flux values, detector states, and cumulative event counts.
 - `entrance_flux_frame.csv`: Frame-level flux time series with detector active flags.
 - `entrance_events.csv`: Event-level rows with direction, start/end time, duration, flux sum, peak flux, and estimated count.
 - `entrance_count_3sec.csv`: 3-second event-based summary CSV.
@@ -105,8 +105,8 @@ Tune `IN_BEE_EVENT_FLUX_UNIT` and `OUT_BEE_EVENT_FLUX_UNIT` so that the calibrat
 
 The first preview points to inspect are:
 
-- The cyan counting band appears only on the top, left, and right edges.
-- The bottom edge is not included in the counting band.
+- The cyan counting band appears on the top, bottom, left, and right edges.
+- The text panel is separated from the ROI so that flux values do not cover the entrance view.
 - Green arrows correspond to IN flux and blue arrows correspond to OUT flux.
 - Slow or sustained motion near the same boundary is grouped into one event rather than repeatedly counted frame by frame.
 
