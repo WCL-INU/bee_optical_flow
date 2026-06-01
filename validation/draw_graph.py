@@ -7,8 +7,8 @@ import pandas as pd
 import seaborn as sns
 
 
-INPUT_PATH = Path("bee_count_output/Book1.xlsx")
-STATS_OUTPUT_PATH = Path("bee_count_output/linear_regression_stats.csv")
+INPUT_PATH = Path("validation/data-20.xlsx")
+STATS_OUTPUT_PATH = Path("validation/linear_regression_stats.csv")
 
 REGRESSION_JOBS = [
     {
