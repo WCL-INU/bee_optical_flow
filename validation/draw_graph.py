@@ -7,7 +7,7 @@ import pandas as pd
 import seaborn as sns
 
 
-INPUT_PATH = Path("validation/data-20.xlsx")
+INPUT_PATH = Path("validation/merged_data.xlsx")
 STATS_OUTPUT_PATH = Path("validation/linear_regression_stats.csv")
 
 REGRESSION_JOBS = [
