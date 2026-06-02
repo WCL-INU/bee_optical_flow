@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-
 INPUT_PATH = Path("validation/merged_data.xlsx")
 STATS_OUTPUT_PATH = Path("validation/linear_regression_stats.csv")
 
@@ -267,9 +266,15 @@ def draw_relationship_plot(df, job, regression_result, clean_data):
         "data": df,
         "x": job["x_col"],
         "y": job["y_col"],
+        "alpha": 0.7,
     }
+    # each time has a different color if time column exists
     if "time" in df.columns:
         scatter_kwargs.update({"hue": "time", "palette": "tab20"})
+
+    # each device has a different shape if device column exists
+    if "device" in df.columns:
+        scatter_kwargs.update({"style": "device", "markers": "o^sD", "palette": "Set2"})
 
     sns.scatterplot(**scatter_kwargs)
 
@@ -328,6 +333,10 @@ def main():
 
     if "time" in df.columns:
         df["time"] = df["time"].astype(str)
+
+    if "device" in df.columns:
+        df["device"] = df["device"].astype(str)
+        # df = df[df["device"] == "16"]
 
     regression_runs = []
 
