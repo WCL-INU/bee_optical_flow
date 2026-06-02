@@ -9,6 +9,7 @@ wheels/
 # Virtual environments
 .venv
 
+videos
 videos/*
 bee_count_output/*
 
