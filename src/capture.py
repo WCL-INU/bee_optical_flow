@@ -1,7 +1,7 @@
 import cv2
 import matplotlib.pyplot as plt
 
-video_path = "videos/ANU-25-summer-5_20260328_130000.mp4"
+video_path = "videos/ANU-25-summer-15_20260310_120000.mp4"
 
 cap = cv2.VideoCapture(video_path)
 ret, frame = cap.read()
@@ -9,8 +9,8 @@ for _ in range(330):
     ret, frame = cap.read()
 
 # 임시 좌표
-x1, y1, x2, y2 = 940, 970, 1310, 1270
-x3, y3, x4, y4 = 1040, 1070, 1210, 1170
+x1, y1, x2, y2 = 1050, 670, 1470, 990
+x3, y3, x4, y4 = 1150, 770, 1370, 890
 
 
 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
