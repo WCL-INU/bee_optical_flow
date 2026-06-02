@@ -622,6 +622,19 @@ def process_video(video_path, output_dir, config):
         "video_path": str(video_path),
         "duration_sec": last_time_sec,
         "processed_frame_pairs": processed_frame_pairs,
+        "roi_x1": roi_rect[0],
+        "roi_y1": roi_rect[1],
+        "roi_x2": roi_rect[2],
+        "roi_y2": roi_rect[3],
+        "ent_x1": config.ent_x1,
+        "ent_y1": config.ent_y1,
+        "ent_x2": config.ent_x2,
+        "ent_y2": config.ent_y2,
+        "entrance_roi_x1": entrance_rect[0],
+        "entrance_roi_y1": entrance_rect[1],
+        "entrance_roi_x2": entrance_rect[2],
+        "entrance_roi_y2": entrance_rect[3],
+        "boundary_band_px": config.boundary_band_px,
         "preprocessing_time_sec": preprocessing_time_sec,
         "optical_flow_time_sec": optical_flow_time_sec,
         "preprocessing_time_per_pair_sec": preprocessing_time_per_pair_sec,
@@ -662,18 +675,30 @@ def process_video(video_path, output_dir, config):
     }, frame_df, window_df
 
 
-def compare_videos(video_paths, output_dir, config):
+def compare_videos(video_paths, output_dir, config, config_for_video=None):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     summaries = []
     for idx, video_path in enumerate(video_paths, start=1):
         print(f"[{idx}/{len(video_paths)}] Processing {Path(video_path)}")
-        result, _, _ = process_video(video_path, output_dir, config)
+        video_config = (
+            config_for_video(video_path, config) if config_for_video is not None else config
+        )
+        result, _, _ = process_video(video_path, output_dir, video_config)
         summaries.append(result)
 
     summary_columns = [
         "video",
+        "roi_x1",
+        "roi_y1",
+        "roi_x2",
+        "roi_y2",
+        "ent_x1",
+        "ent_y1",
+        "ent_x2",
+        "ent_y2",
+        "boundary_band_px",
         "blur_kernel",
         "use_persistence_filter",
         "persist_decay",
@@ -764,6 +789,21 @@ def parse_args():
         default=Path("bee_count_output") / "persistence_filter",
     )
     parser.add_argument("--blur-kernel", type=int, choices=[1, 3, 5], default=3)
+    parser.add_argument(
+        "--roi",
+        nargs=4,
+        type=int,
+        metavar=("X1", "Y1", "X2", "Y2"),
+        help="Full-frame ROI rectangle.",
+    )
+    parser.add_argument(
+        "--entrance",
+        nargs=4,
+        type=int,
+        metavar=("X1", "Y1", "X2", "Y2"),
+        help="Full-frame entrance boundary rectangle.",
+    )
+    parser.add_argument("--boundary-band-px", type=int, default=8)
     parser.add_argument("--no-persistence-filter", action="store_true")
     parser.add_argument("--persist-decay", type=float, default=0.65)
     parser.add_argument("--persist-threshold", type=float, default=1.3)
@@ -782,25 +822,45 @@ def parse_args():
 
 
 def config_from_args(args):
-    return Config(
-        blur_kernel=args.blur_kernel,
-        use_persistence_filter=not args.no_persistence_filter,
-        persist_decay=args.persist_decay,
-        persist_threshold=args.persist_threshold,
-        use_component_area_filter=args.use_component_area_filter,
-        min_flow_component_area=args.min_flow_component_area,
-        use_global_flow_compensation=args.use_global_flow_compensation,
-        use_bidirectional_balance_filter=args.use_bidirectional_balance_filter,
-        balance_ratio_threshold=args.balance_ratio_threshold,
-        flow_mag_threshold=args.flow_mag_threshold,
-        normal_flow_threshold=args.normal_flow_threshold,
-        preview_stride=max(1, args.preview_stride),
-        preview_panel_width=max(1, args.preview_panel_width),
-        warn_ratio_between_videos=args.warn_ratio_between_videos,
-        warn_max_window_filtered_traffic_count_est=(
+    updates = {
+        "blur_kernel": args.blur_kernel,
+        "boundary_band_px": args.boundary_band_px,
+        "use_persistence_filter": not args.no_persistence_filter,
+        "persist_decay": args.persist_decay,
+        "persist_threshold": args.persist_threshold,
+        "use_component_area_filter": args.use_component_area_filter,
+        "min_flow_component_area": args.min_flow_component_area,
+        "use_global_flow_compensation": args.use_global_flow_compensation,
+        "use_bidirectional_balance_filter": args.use_bidirectional_balance_filter,
+        "balance_ratio_threshold": args.balance_ratio_threshold,
+        "flow_mag_threshold": args.flow_mag_threshold,
+        "normal_flow_threshold": args.normal_flow_threshold,
+        "preview_stride": max(1, args.preview_stride),
+        "preview_panel_width": max(1, args.preview_panel_width),
+        "warn_ratio_between_videos": args.warn_ratio_between_videos,
+        "warn_max_window_filtered_traffic_count_est": (
             args.warn_max_window_filtered_traffic_count_est
         ),
-    )
+    }
+    if args.roi is not None:
+        updates.update(
+            {
+                "roi_x1": args.roi[0],
+                "roi_y1": args.roi[1],
+                "roi_x2": args.roi[2],
+                "roi_y2": args.roi[3],
+            }
+        )
+    if args.entrance is not None:
+        updates.update(
+            {
+                "ent_x1": args.entrance[0],
+                "ent_y1": args.entrance[1],
+                "ent_x2": args.entrance[2],
+                "ent_y2": args.entrance[3],
+            }
+        )
+    return Config(**updates)
 
 
 def main():

@@ -176,6 +176,62 @@ TUNE_GRIDS = {
     ],
 }
 
+COORDINATE_DEFAULT = "default"
+COORDINATE_AUTO = "auto"
+
+COORDINATE_PRESETS = {
+    "anu25_summer_3": {
+        "video_key": "ANU-25-summer-3",
+        "roi": (940, 970, 1310, 1270),
+        "entrance": (1040, 1070, 1210, 1170),
+    },
+    "anu25_summer_5": {
+        "video_key": "ANU-25-summer-5",
+        "roi": (760, 970, 1130, 1270),
+        "entrance": (860, 1070, 1030, 1170),
+    },
+    "anu25_summer_7": {
+        "video_key": "ANU-25-summer-7",
+        "roi": (850, 930, 1220, 1230),
+        "entrance": (950, 1030, 1120, 1130),
+    },
+    "anu25_summer_9": {
+        "video_key": "ANU-25-summer-9",
+        "roi": (920, 940, 1290, 1240),
+        "entrance": (1020, 1040, 1190, 1140),
+    },
+    "anu25_summer_12": {
+        "video_key": "ANU-25-summer-12",
+        "roi": (1040, 1020, 1410, 1320),
+        "entrance": (1140, 1120, 1310, 1220),
+    },
+    "anu25_summer_13": {
+        "video_key": "ANU-25-summer-13",
+        "roi": (1280, 1030, 1650, 1330),
+        "entrance": (1380, 1130, 1550, 1230),
+    },
+    "anu25_summer_14": {
+        "video_key": "ANU-25-summer-14",
+        "roi": (930, 960, 1350, 1280),
+        "entrance": (1030, 1060, 1250, 1180),
+    },
+    "anu25_summer_15": {
+        "video_key": "ANU-25-summer-15",
+        "roi": (1050, 670, 1470, 990),
+        "entrance": (1150, 770, 1370, 890),
+    },
+    "anu25_summer_16": {
+        "video_key": "ANU-25-summer-16",
+        "roi": (940, 1000, 1310, 1300),
+        "entrance": (1040, 1100, 1210, 1200),
+    },
+    "anu25_summer_20": {
+        "video_key": "ANU-25-summer-20",
+        "roi": (1020, 980, 1420, 1280),
+        "entrance": (1120, 1080, 1320, 1180),
+    },
+}
+
 
 def discover_videos(video_dir, pattern):
     video_dir = Path(video_dir)
@@ -211,11 +267,95 @@ def select_videos(args):
     return videos
 
 
+def validate_rect(rect, name):
+    x1, y1, x2, y2 = (int(value) for value in rect)
+    if x2 <= x1 or y2 <= y1:
+        raise ValueError(f"Invalid {name} rectangle: {(x1, y1, x2, y2)}")
+    return x1, y1, x2, y2
+
+
+def rect_updates(prefix, rect):
+    if rect is None:
+        return {}
+
+    x1, y1, x2, y2 = validate_rect(rect, prefix.upper())
+    return {
+        f"{prefix}_x1": x1,
+        f"{prefix}_y1": y1,
+        f"{prefix}_x2": x2,
+        f"{prefix}_y2": y2,
+    }
+
+
+def apply_coordinate_rects(config, roi_rect=None, entrance_rect=None):
+    updates = {}
+    updates.update(rect_updates("roi", roi_rect))
+    updates.update(rect_updates("ent", entrance_rect))
+    return replace(config, **updates) if updates else config
+
+
+def apply_coordinate_preset(config, preset_name):
+    preset = COORDINATE_PRESETS[preset_name]
+    return apply_coordinate_rects(
+        config,
+        roi_rect=preset["roi"],
+        entrance_rect=preset["entrance"],
+    )
+
+
+def coordinate_preset_matches_video(preset, video_path):
+    stem = Path(video_path).stem
+    video_key = preset["video_key"]
+    return stem == video_key or stem.startswith(f"{video_key}_")
+
+
+def find_coordinate_preset(video_path):
+    for preset_name, preset in COORDINATE_PRESETS.items():
+        if coordinate_preset_matches_video(preset, video_path):
+            return preset_name
+    return None
+
+
+def resolve_config_for_video(video_path, base_config, args):
+    config = base_config
+
+    if args.coordinate_preset == COORDINATE_AUTO:
+        preset_name = find_coordinate_preset(video_path)
+        if preset_name is not None:
+            config = apply_coordinate_preset(config, preset_name)
+
+    return apply_coordinate_rects(
+        config,
+        roi_rect=args.roi,
+        entrance_rect=args.entrance,
+    )
+
+
+def make_video_config_resolver(args):
+    def resolve(video_path, base_config):
+        return resolve_config_for_video(video_path, base_config, args)
+
+    return resolve
+
+
+def rect_text(values):
+    return f"({values[0]}, {values[1]}, {values[2]}, {values[3]})"
+
+
+def config_roi_rect(config):
+    return config.roi_x1, config.roi_y1, config.roi_x2, config.roi_y2
+
+
+def config_entrance_rect(config):
+    return config.ent_x1, config.ent_y1, config.ent_x2, config.ent_y2
+
+
 def build_config(args):
     config = PRESETS[args.preset]
 
     updates = {}
     for field_name in [
+        "boundary_band_px",
         "blur_kernel",
         "flow_mag_threshold",
         "normal_flow_threshold",
@@ -243,7 +383,10 @@ def build_config(args):
     if args.use_bidirectional_balance_filter:
         updates["use_bidirectional_balance_filter"] = True
 
-    return replace(config, **updates)
+    config = replace(config, **updates)
+    if args.coordinate_preset not in {COORDINATE_DEFAULT, COORDINATE_AUTO}:
+        config = apply_coordinate_preset(config, args.coordinate_preset)
+    return config
 
 
 def config_from_overrides(base_config, overrides):
@@ -355,33 +498,45 @@ def make_run_dir(args):
     return Path(args.output_root) / run_name
 
 
-def print_plan(videos, config, output_dir, mode):
+def print_plan(videos, config, output_dir, mode, args):
     print(f"mode       : {mode}")
     print(f"output dir : {output_dir}")
     print(f"videos     : {len(videos)}")
     for idx, video in enumerate(videos, start=1):
-        print(f"  {idx:02d}. {video}")
+        video_config = resolve_config_for_video(video, config, args)
+        coordinate_note = args.coordinate_preset
+        if args.coordinate_preset == COORDINATE_AUTO:
+            coordinate_note = find_coordinate_preset(video) or COORDINATE_DEFAULT
+        print(
+            f"  {idx:02d}. {video} "
+            f"[coords={coordinate_note}, "
+            f"roi={rect_text(config_roi_rect(video_config))}, "
+            f"entrance={rect_text(config_entrance_rect(video_config))}]"
+        )
+    first_config = resolve_config_for_video(videos[0], config, args)
     print(
         "config     : "
-        f"blur={config.blur_kernel}, "
-        f"mag>{config.flow_mag_threshold}, "
-        f"normal>{config.normal_flow_threshold}, "
-        f"persistence={config.use_persistence_filter}, "
-        f"decay={config.persist_decay}, "
-        f"threshold={config.persist_threshold}, "
-        f"area_filter={config.use_component_area_filter}, "
-        f"min_area={config.min_flow_component_area}, "
-        f"preview_stride={config.preview_stride}"
+        f"boundary_band={first_config.boundary_band_px}, "
+        f"blur={first_config.blur_kernel}, "
+        f"mag>{first_config.flow_mag_threshold}, "
+        f"normal>{first_config.normal_flow_threshold}, "
+        f"persistence={first_config.use_persistence_filter}, "
+        f"decay={first_config.persist_decay}, "
+        f"threshold={first_config.persist_threshold}, "
+        f"area_filter={first_config.use_component_area_filter}, "
+        f"min_area={first_config.min_flow_component_area}, "
+        f"preview_stride={first_config.preview_stride}"
     )
 
 
-def run_batch(videos, output_dir, config):
+def run_batch(videos, output_dir, config, args):
     output_dir.mkdir(parents=True, exist_ok=True)
     summaries = []
 
     for idx, video in enumerate(videos, start=1):
         print(f"[{idx}/{len(videos)}] Processing {video}")
-        result, _, _ = process_video(video, output_dir, config)
+        video_config = resolve_config_for_video(video, config, args)
+        result, _, _ = process_video(video, output_dir, video_config)
         summaries.append(result)
 
     summary_df = pd.DataFrame(summaries)
@@ -448,7 +603,7 @@ def run_tune(videos, output_dir, base_config, args):
             print(f"reuse: {summary_path}")
             summary_df = pd.read_csv(summary_path)
         else:
-            summary_df = run_batch(videos, trial_dir, trial_config)
+            summary_df = run_batch(videos, trial_dir, trial_config, args)
 
         _, metrics = evaluate_summary(
             summary_df,
@@ -494,7 +649,7 @@ def run_tune(videos, output_dir, base_config, args):
     return metrics_df
 
 
-def run_groups(videos, output_dir, config, group_size, slide):
+def run_groups(videos, output_dir, config, args, group_size, slide):
     if group_size < 2:
         raise ValueError("--group-size must be at least 2 in groups mode.")
     if slide < 1:
@@ -512,7 +667,12 @@ def run_groups(videos, output_dir, config, group_size, slide):
         group_dir = output_dir / f"group_{group_idx:03d}_{group[0].stem}_to_{group[-1].stem}"
         group_dirs.append(group_dir)
         print(f"[group {group_idx}] {group[0].name} -> {group[-1].name}")
-        summary_df, warnings = compare_videos(group, group_dir, config)
+        summary_df, warnings = compare_videos(
+            group,
+            group_dir,
+            config,
+            config_for_video=make_video_config_resolver(args),
+        )
         group_summary = summary_df.copy()
         group_summary.insert(0, "group", group_idx)
         group_summary.insert(1, "warning_count", len(warnings))
@@ -562,6 +722,31 @@ def parse_args():
     parser.add_argument("--target-weight", type=float, default=1.5)
 
     parser.add_argument("--preset", choices=sorted(PRESETS), default="selected")
+    parser.add_argument(
+        "--coordinate-preset",
+        choices=[COORDINATE_DEFAULT, COORDINATE_AUTO, *sorted(COORDINATE_PRESETS)],
+        default=COORDINATE_AUTO,
+        help=(
+            "Coordinate set for ROI and entrance rectangle. Use auto to match "
+            "known video/device names, default to keep Config coordinates, or a "
+            "named preset such as anu25_summer_20."
+        ),
+    )
+    parser.add_argument(
+        "--roi",
+        nargs=4,
+        type=int,
+        metavar=("X1", "Y1", "X2", "Y2"),
+        help="Full-frame ROI rectangle. Overrides --coordinate-preset ROI.",
+    )
+    parser.add_argument(
+        "--entrance",
+        nargs=4,
+        type=int,
+        metavar=("X1", "Y1", "X2", "Y2"),
+        help="Full-frame entrance boundary rectangle. Overrides preset entrance.",
+    )
+    parser.add_argument("--boundary-band-px", type=int)
     parser.add_argument("--blur-kernel", type=int, choices=[1, 3, 5])
     parser.add_argument("--flow-mag-threshold", type=float)
     parser.add_argument("--normal-flow-threshold", type=float)
@@ -612,19 +797,24 @@ def main():
         return
 
     videos = select_videos(args)
-    print_plan(videos, config, output_dir, args.mode)
+    print_plan(videos, config, output_dir, args.mode, args)
     if args.dry_run:
         print("dry run: no videos processed")
         return
 
     if args.mode == "batch":
-        run_batch(videos, output_dir, config)
+        run_batch(videos, output_dir, config, args)
     elif args.mode == "compare":
-        compare_videos(videos, output_dir, config)
+        compare_videos(
+            videos,
+            output_dir,
+            config,
+            config_for_video=make_video_config_resolver(args),
+        )
     elif args.mode == "tune":
         run_tune(videos, output_dir, config, args)
     else:
-        run_groups(videos, output_dir, config, args.group_size, args.slide)
+        run_groups(videos, output_dir, config, args, args.group_size, args.slide)
 
 
 if __name__ == "__main__":

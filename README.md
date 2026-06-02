@@ -47,7 +47,7 @@
 ## 처리 흐름
 
 1. 입력 영상을 OpenCV로 읽습니다.
-2. 고정 ROI를 crop합니다.
+2. 설정된 ROI를 crop합니다.
 3. 전체 프레임 기준 entrance rectangle을 ROI 좌표로 변환합니다.
 4. entrance rectangle의 네 변을 기준으로 boundary band와 inward normal vector를 계산합니다.
 5. 입구 top/bottom/left/right 주변 boundary band를 counting 영역으로 사용합니다.
@@ -57,14 +57,27 @@
 9. raw/filtered flux를 프레임 CSV로 저장하고, 3초 window 단위 count estimate를 생성합니다.
 10. ROI preview video에 entrance rectangle, counting band, flow 후보를 시각화하고, flux 값은 별도 정보 패널에 표시합니다.
 
-## 기본 좌표와 파라미터
+## 좌표와 파라미터
 
-현재 기본 ROI와 입구 좌표는 `Config`에 고정되어 있습니다.
+ROI와 입구 경계 좌표는 전체 프레임 기준 `(x1, y1, x2, y2)` 사각형입니다. `Config`의 기본 좌표는 `ANU-25-summer-20` 기준이며, `src/main.py`에서는 영상명에 맞는 좌표 preset을 자동 적용하거나 CLI에서 직접 덮어쓸 수 있습니다.
 
 ```python
-roi_x1, roi_y1, roi_x2, roi_y2 = 1300, 1000, 1640, 1232
-ent_x1, ent_y1, ent_x2, ent_y2 = 1400, 1200, 1600, 1232
+roi_x1, roi_y1, roi_x2, roi_y2 = 1020, 980, 1420, 1280
+ent_x1, ent_y1, ent_x2, ent_y2 = 1120, 1080, 1320, 1180
 ```
+
+`src/main.py`의 `--coordinate-preset auto`가 기본값입니다. 현재 `roi_ent_info.txt`에 정리된 `anu25_summer_3`, `anu25_summer_5`, `anu25_summer_7`, `anu25_summer_9`, `anu25_summer_12`, `anu25_summer_13`, `anu25_summer_14`, `anu25_summer_15`, `anu25_summer_16`, `anu25_summer_20` 좌표를 영상 파일명 기준으로 매칭합니다. 매칭되는 preset이 없으면 `Config` 기본 좌표를 사용합니다.
+
+좌표 관련 실행 옵션:
+
+| 옵션 | 의미 |
+| --- | --- |
+| `--coordinate-preset auto` | 영상명으로 좌표 preset 자동 선택 |
+| `--coordinate-preset anu25_summer_15` | 특정 좌표 preset 강제 사용 |
+| `--coordinate-preset default` | preset 적용 없이 `Config` 기본 좌표 사용 |
+| `--roi X1 Y1 X2 Y2` | ROI 좌표 직접 지정 |
+| `--entrance X1 Y1 X2 Y2` | 입구 경계 좌표 직접 지정 |
+| `--boundary-band-px N` | 입구 경계 주변 counting band 폭 지정 |
 
 주요 기본값은 다음과 같습니다.
 
@@ -124,6 +137,24 @@ python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_06000
 python -m src.main --mode batch --preset selected
 ```
 
+영상명에 맞는 좌표 preset을 자동 적용해서 batch 실행:
+
+```powershell
+python -m src.main --mode batch --video-dir videos --pattern "ANU-25-summer-*.mp4" --coordinate-preset auto
+```
+
+특정 기기/영상군 좌표를 강제로 사용:
+
+```powershell
+python -m src.main --mode batch --coordinate-preset anu25_summer_15 --video-dir videos --pattern "ANU-25-summer-15_*.mp4"
+```
+
+ROI와 입구 경계 좌표를 직접 지정:
+
+```powershell
+python -m src.main --mode batch --videos videos/ANU-25-summer-20_20260328_130000.mp4 --roi 1020 980 1420 1280 --entrance 1120 1080 1320 1180 --boundary-band-px 8
+```
+
 특정 영상 목록만 비교:
 
 ```powershell
@@ -151,6 +182,8 @@ python -m src.main --mode batch --preset selected --dry-run
 - `{video_stem}_preview.mp4`: ROI와 별도 정보 패널을 함께 담은 preview 영상
 - `{video_stem}_frame_flux.csv`: 프레임별 raw/filtered flux
 - `{video_stem}_window_3sec.csv`: 3초 window별 count estimate
+
+`batch_summary.csv`와 `comparison_summary.csv`에는 처리에 사용된 `roi_*`, `ent_*`, `boundary_band_px` 컬럼도 함께 저장됩니다.
 
 비교 및 batch 실행 시 주요 파일:
 
