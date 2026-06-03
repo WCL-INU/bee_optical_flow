@@ -1,51 +1,38 @@
 # Validation Data Viewer
 
-`data_viewer.html` is a static browser viewer for checking the relationship between
-algorithm output and manually counted truth values. The build step now calculates
-the regression models directly from `merged_data.xlsx`, then embeds both the data
-and model results into the HTML.
+`data_viewer.html`은 optical-flow 산출값과 실제 카운트 값의 관계를 확인하기 위한 정적 브라우저 뷰어입니다. 빌드 단계에서 `merged_data.xlsx`를 읽고, 선형 회귀와 flat-exponential 회귀를 직접 계산한 뒤 데이터와 모델 결과를 HTML에 함께 넣습니다.
 
-Build or refresh the viewer after updating `validation/data/merged_data.xlsx`:
+## 실행
+
+PowerShell에서 `uv` 사용을 기본으로 합니다.
 
 ```powershell
-python validation\build_data_viewer.py
+uv run python validation\build_data_viewer.py
 ```
 
-Open:
+생성 결과:
 
 ```text
 validation/output/data_viewer.html
+validation/output/regression_model_comparison.csv
 ```
 
-The viewer uses:
+## 폴더 구조
 
-- `validation/data/merged_data.xlsx` for per-sample output and truth rows.
-- The built-in regression calculation in `build_data_viewer.py` for linear and
-  flat-exponential prediction models.
-- `validation/output/regression_model_comparison.csv` as a refreshed summary
-  export of the models used by the viewer.
+- `validation/build_data_viewer.py`: 현재 사용하는 뷰어 빌더
+- `validation/data/`: 입력 spreadsheet와 검증 원천 데이터
+- `validation/output/`: 재생성 가능한 뷰어 HTML과 모델 요약
+- `validation/legacy/`: 이전 정적 그래프/리포트 스크립트와 산출물
 
-Main checks:
+기본 입력 파일은 `validation/data/merged_data.xlsx`입니다.
 
-- Switch `IN` / `OUT` to inspect each direction independently.
-- Switch model type to compare linear vs flat-exponential prediction behavior.
-- Filter by `device` and `time` to find systematic error patterns.
-- Use `Error percentile` to focus the feature summary on large-error samples.
-- Click a scatter point to highlight the same sample in the error table and
-  scroll to it.
-- `Video date` is taken from the spreadsheet `datetime` column. `Video time` is
-  formatted from the `time` code, so `100000` is shown as `10:00:00`.
-- Inspect `filtered`, `raw`, and `ratio` columns to see whether the improved
-  extraction keeps real movement while suppressing noisy raw flux.
+## 뷰어에서 확인할 것
 
-To compare a newly improved algorithm, regenerate `validation/data/merged_data.xlsx`
-from the new results, rerun `build_data_viewer.py`, and reopen or refresh
-`validation/output/data_viewer.html`. The regression model summary is recalculated
-during the viewer build.
+- `IN` / `OUT` 방향별로 산출값과 실제값의 관계를 확인합니다.
+- 모델 선택으로 `linear`와 `flat_exponential` 예측선을 비교합니다.
+- `device`, `time` 필터로 특정 기기나 시간대의 오차 패턴을 봅니다.
+- 산점도 마커를 클릭하면 같은 데이터가 `Error Rows` 테이블에서 하이라이트되고 자동 스크롤됩니다.
+- `video time`은 원본 `time` 코드에서 만든 표시값입니다. 예: `100000` -> `10:00:00`.
+- `filtered`, `raw`, `ratio` 컬럼으로 개선 알고리즘이 실제 움직임은 유지하고 노이즈성 flux를 줄였는지 확인합니다.
 
-Folder layout:
-
-- `validation/build_data_viewer.py`: current validation viewer builder.
-- `validation/data/`: input spreadsheets and source validation data.
-- `validation/output/`: regenerated viewer HTML and model summary.
-- `validation/legacy/`: older static graph scripts, plots, and reports kept for reference.
+새 알고리즘 결과를 비교하려면 `validation/data/merged_data.xlsx`를 갱신한 뒤 위 빌드 명령을 다시 실행하고 `validation/output/data_viewer.html`을 새로고침하면 됩니다.

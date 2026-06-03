@@ -1,4 +1,4 @@
-# Bee Entrance Event Counting
+﻿# Bee Entrance Event Counting
 
 ## 1. Problem definition
 
@@ -117,11 +117,11 @@ Run the default two-video wrapper from the project root:
 Run:
 
 ```powershell
-python -m src.optical_count
+uv run python -m src.optical_count
 ```
 
 For a quick syntax check without processing video:
 
 ```powershell
-python -m py_compile src/optical_count.py
+uv run python -m py_compile src/optical_count.py
 ```

@@ -1,4 +1,4 @@
-# Bee Entrance Noise Filtering
+﻿# Bee Entrance Noise Filtering
 
 ## 1. Why the event detector is rolled back
 
@@ -111,19 +111,19 @@ After the two quiet videos pass, check a high-activity positive sample and confi
 Run one video:
 
 ```powershell
-python -m src.bee_entrance_count --video videos/ANU-25-summer-6_20260405_060000.mp4
+uv run python -m src.bee_entrance_count --video videos/ANU-25-summer-6_20260405_060000.mp4
 ```
 
 Compare the two noise-focused test videos:
 
 ```powershell
-python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
+uv run python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
 ```
 
 Try a stricter area filter:
 
 ```powershell
-python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --min-flow-component-area 50
+uv run python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4 --min-flow-component-area 50
 ```
 
 Enable optional mean magnitude filtering:

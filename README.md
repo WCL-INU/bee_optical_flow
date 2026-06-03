@@ -122,55 +122,55 @@ pip install opencv-python numpy pandas
 단일 영상 처리:
 
 ```powershell
-python -m src.bee_entrance_count --video videos/ANU-25-summer-6_20260405_060000.mp4
+uv run python -m src.bee_entrance_count --video videos/ANU-25-summer-6_20260405_060000.mp4
 ```
 
 두 개 이상의 영상 비교:
 
 ```powershell
-python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
+uv run python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
 ```
 
 현재 선택 preset으로 전체 batch 실행:
 
 ```powershell
-python -m src.main --mode batch --preset selected
+uv run python -m src.main --mode batch --preset selected
 ```
 
 영상명에 맞는 좌표 preset을 자동 적용해서 batch 실행:
 
 ```powershell
-python -m src.main --mode batch --video-dir videos --pattern "ANU-25-summer-*.mp4" --coordinate-preset auto
+uv run python -m src.main --mode batch --video-dir videos --pattern "ANU-25-summer-*.mp4" --coordinate-preset auto
 ```
 
 특정 기기/영상군 좌표를 강제로 사용:
 
 ```powershell
-python -m src.main --mode batch --coordinate-preset anu25_summer_15 --video-dir videos --pattern "ANU-25-summer-15_*.mp4"
+uv run python -m src.main --mode batch --coordinate-preset anu25_summer_15 --video-dir videos --pattern "ANU-25-summer-15_*.mp4"
 ```
 
 ROI와 입구 경계 좌표를 직접 지정:
 
 ```powershell
-python -m src.main --mode batch --videos videos/ANU-25-summer-20_20260328_130000.mp4 --roi 1020 980 1420 1280 --entrance 1120 1080 1320 1180 --boundary-band-px 8
+uv run python -m src.main --mode batch --videos videos/ANU-25-summer-20_20260328_130000.mp4 --roi 1020 980 1420 1280 --entrance 1120 1080 1320 1180 --boundary-band-px 8
 ```
 
 특정 영상 목록만 비교:
 
 ```powershell
-python -m src.main --mode compare --videos videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
+uv run python -m src.main --mode compare --videos videos/ANU-25-summer-6_20260405_060000.mp4 videos/ANU-25-summer-6_20260405_070000.mp4
 ```
 
 간단한 parameter grid tuning:
 
 ```powershell
-python -m src.main --mode tune --preset selected --truth-csv videos/entrance.csv
+uv run python -m src.main --mode tune --preset selected --truth-csv videos/entrance.csv
 ```
 
 실행 계획만 확인:
 
 ```powershell
-python -m src.main --mode batch --preset selected --dry-run
+uv run python -m src.main --mode batch --preset selected --dry-run
 ```
 
 ## 산출물
@@ -210,3 +210,24 @@ python -m src.main --mode batch --preset selected --dry-run
 ## 시각화 보조 스크립트
 
 `src/vis.py`는 ROI의 optical-flow magnitude를 heatmap으로 겹쳐 저장합니다. `src/vis_arr.py`는 일정 간격의 flow vector를 화살표로 표시해 움직임 방향을 빠르게 확인하는 용도입니다. `src/vis_arr2.py`는 flow 방향을 HSV hue로, 강도를 value로 표현해 전체 flow field의 방향 분포를 확인합니다. `src/sep_blob.py`는 flow magnitude mask에 morphology와 connected component 분석을 적용해 움직임 blob 후보가 어떻게 분리되는지 보는 실험용 스크립트입니다.
+## Validation Viewer
+
+검증 데이터 뷰어는 `validation/build_data_viewer.py`가 담당합니다. `validation/data/merged_data.xlsx`를 읽고, 선형 회귀와 flat-exponential 회귀를 계산한 뒤 정적 HTML 뷰어를 생성합니다.
+
+```powershell
+uv run python validation\build_data_viewer.py
+```
+
+생성 결과:
+
+- `validation/output/data_viewer.html`
+- `validation/output/regression_model_comparison.csv`
+
+검증 폴더 구조:
+
+- `validation/build_data_viewer.py`: 현재 사용하는 validation viewer 빌더
+- `validation/data/`: 입력 spreadsheet와 검증 원천 데이터
+- `validation/output/`: 재생성 가능한 HTML/CSV 산출물
+- `validation/legacy/`: 이전 정적 그래프/회귀 리포트 보관
+
+자세한 사용법은 `validation/data_viewer.md`를 참고합니다.

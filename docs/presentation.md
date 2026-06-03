@@ -1,4 +1,4 @@
-# Bee Entrance Optical Flow 프로젝트 이해 개요
+﻿# Bee Entrance Optical Flow 프로젝트 이해 개요
 
 대상: optical flow, 영상 처리, 벌 출입량 추정 방법론을 처음 접하는 팀원  
 목적: 현재 디렉토리의 작업이 무엇을 하려는지, 어떤 지식이 필요하며, 코드를 어떤 순서로 따라가면 되는지 정리한다.
@@ -360,9 +360,9 @@ min_flow_component_area=200
 예시:
 
 ```bash
-python -m src.main --mode batch --preset selected --dry-run
-python -m src.main --mode batch --preset selected
-python -m src.main --mode tune --preset selected --truth-csv videos/entrance.csv
+uv run python -m src.main --mode batch --preset selected --dry-run
+uv run python -m src.main --mode batch --preset selected
+uv run python -m src.main --mode tune --preset selected --truth-csv videos/entrance.csv
 ```
 
 ---
@@ -475,7 +475,7 @@ ANU-25-summer-11_20260328_130000.mp4,3,5
 ### 5단계: 평가와 튜닝
 
 ```bash
-python -m src.main --mode tune --preset selected --truth-csv videos/entrance.csv
+uv run python -m src.main --mode tune --preset selected --truth-csv videos/entrance.csv
 ```
 
 평가 결과를 보고 active 영상의 오차와 zero/quiet 영상의 false positive를 함께 줄인다.
