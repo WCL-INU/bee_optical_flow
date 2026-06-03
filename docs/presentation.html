@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -1390,7 +1390,7 @@ filtered_out_count_est =
               3. 아래 scatter-figures 블록을 잠시 주석 처리하거나 지우고, 대신 다음 태그를 넣는다.
                  <video src="bee_preview.mp4" controls muted playsinline preload="metadata"></video>
               4. src 경로는 presentation.html 기준 상대 경로로 적는다. 로컬 파일 경로가 불안정하면 docs/에서
-                 `python -m http.server`를 실행한 뒤 http://localhost:8000/presentation.html 로 확인한다.
+                 `uv run python -m http.server`를 실행한 뒤 http://localhost:8000/presentation.html 로 확인한다.
             -->
             <!-- <div class="scatter-figures"> -->
               <figure class="scatter-figure">
@@ -1492,7 +1492,7 @@ min_flow_component_area = 200</code></pre>
               </div>
               <div class="phase">
                 <h3>Tune</h3>
-                <p>`python -m src.main --mode tune`로 preset과 threshold를 비교한다.</p>
+                <p>`uv run python -m src.main --mode tune`로 preset과 threshold를 비교한다.</p>
               </div>
             </div>
           </div>

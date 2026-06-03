@@ -13,7 +13,7 @@
 
 ### IN count 모델
 
-![IN count 모델](in_count.png)
+![IN count 모델](plots/in_count.png)
 
 ```text
 in = 0.0000116523 * total_filtered_in_flux + 6.1251
@@ -23,7 +23,7 @@ in = 0.0000116523 * total_filtered_in_flux + 6.1251
 
 ### OUT count 모델
 
-![OUT count 모델](out_count.png)
+![OUT count 모델](plots/out_count.png)
 
 ```text
 out = 0.0000162326 * total_filtered_out_flux + 4.9832
