@@ -8,9 +8,9 @@ from zipfile import ZipFile
 from xml.etree import ElementTree as ET
 
 
-DEFAULT_INPUT = Path("validation/merged_data.xlsx")
-DEFAULT_OUTPUT = Path("validation/data_viewer.html")
-DEFAULT_MODELS_OUTPUT = Path("validation/regression_model_comparison.csv")
+DEFAULT_INPUT = Path("validation/data/merged_data.xlsx")
+DEFAULT_OUTPUT = Path("validation/output/data_viewer.html")
+DEFAULT_MODELS_OUTPUT = Path("validation/output/regression_model_comparison.csv")
 
 EXP_FLUX_SCALE = 1_000_000.0
 FLAT_EXP_MIN_LOG_SLOPE = 0.001

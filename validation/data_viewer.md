@@ -5,7 +5,7 @@ algorithm output and manually counted truth values. The build step now calculate
 the regression models directly from `merged_data.xlsx`, then embeds both the data
 and model results into the HTML.
 
-Build or refresh the viewer after updating `merged_data.xlsx`:
+Build or refresh the viewer after updating `validation/data/merged_data.xlsx`:
 
 ```powershell
 python validation\build_data_viewer.py
@@ -14,16 +14,16 @@ python validation\build_data_viewer.py
 Open:
 
 ```text
-validation/data_viewer.html
+validation/output/data_viewer.html
 ```
 
 The viewer uses:
 
-- `validation/merged_data.xlsx` for per-sample output and truth rows.
+- `validation/data/merged_data.xlsx` for per-sample output and truth rows.
 - The built-in regression calculation in `build_data_viewer.py` for linear and
   flat-exponential prediction models.
-- `validation/regression_model_comparison.csv` as a refreshed summary export of
-  the models used by the viewer.
+- `validation/output/regression_model_comparison.csv` as a refreshed summary
+  export of the models used by the viewer.
 
 Main checks:
 
@@ -38,6 +38,14 @@ Main checks:
 - Inspect `filtered`, `raw`, and `ratio` columns to see whether the improved
   extraction keeps real movement while suppressing noisy raw flux.
 
-To compare a newly improved algorithm, regenerate `merged_data.xlsx` from the new
-results, rerun `build_data_viewer.py`, and reopen or refresh `data_viewer.html`.
-The regression model summary is recalculated during the viewer build.
+To compare a newly improved algorithm, regenerate `validation/data/merged_data.xlsx`
+from the new results, rerun `build_data_viewer.py`, and reopen or refresh
+`validation/output/data_viewer.html`. The regression model summary is recalculated
+during the viewer build.
+
+Folder layout:
+
+- `validation/build_data_viewer.py`: current validation viewer builder.
+- `validation/data/`: input spreadsheets and source validation data.
+- `validation/output/`: regenerated viewer HTML and model summary.
+- `validation/legacy/`: older static graph scripts, plots, and reports kept for reference.
