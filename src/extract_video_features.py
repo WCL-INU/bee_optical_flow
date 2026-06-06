@@ -63,7 +63,7 @@ except ModuleNotFoundError:
 
 DEFAULT_OUTPUT_DIR = Path("analysis") / "video_features" / "output"
 DEFAULT_VIDEO_DIR = Path("videos")
-DEFAULT_PATTERN = "ANU-25-summer-*.mp4"
+DEFAULT_PATTERNS = ["ANU-25-summer-*.mp4"]
 WINDOW_SEC = 120.0
 ANGLE_BINS = 12
 
@@ -282,12 +282,32 @@ def window_summary(rows: list[dict[str, float]], video_name: str, window_sec: fl
     return pd.DataFrame(summary_rows)
 
 
-def discover_videos(video_dir: Path, pattern: str) -> list[Path]:
-    return sorted(Path(video_dir).glob(pattern))
+def unique_sorted_paths(paths: list[Path]) -> list[Path]:
+    seen = set()
+    unique = []
+    for path in sorted(paths):
+        key = str(path.resolve()) if path.exists() else str(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(path)
+    return unique
+
+
+def discover_videos(video_dir: Path, patterns: list[str]) -> list[Path]:
+    video_dir = Path(video_dir)
+    videos = []
+    for pattern in patterns:
+        videos.extend(video_dir.glob(pattern))
+    return unique_sorted_paths(videos)
 
 
 def select_videos(args: argparse.Namespace) -> list[Path]:
-    videos = [Path(path) for path in args.videos] if args.videos else discover_videos(args.video_dir, args.pattern)
+    videos = (
+        unique_sorted_paths([Path(path) for path in args.videos])
+        if args.videos
+        else discover_videos(args.video_dir, args.pattern)
+    )
     if args.start is not None or args.end is not None:
         videos = videos[args.start or 0 : args.end]
     if args.limit is not None:
@@ -625,7 +645,15 @@ def parse_args() -> argparse.Namespace:
         description="Extract image-only and optical-flow reliability features from bee entrance videos."
     )
     parser.add_argument("--video-dir", type=Path, default=DEFAULT_VIDEO_DIR)
-    parser.add_argument("--pattern", default=DEFAULT_PATTERN)
+    parser.add_argument(
+        "--pattern",
+        nargs="+",
+        default=DEFAULT_PATTERNS,
+        help=(
+            "One or more glob patterns under --video-dir. Example: "
+            '--pattern "ANU-25-summer-3_*.mp4" "ANU-25-summer-20_*.mp4"'
+        ),
+    )
     parser.add_argument("--videos", nargs="+", type=Path)
     parser.add_argument("--start", type=int)
     parser.add_argument("--end", type=int)

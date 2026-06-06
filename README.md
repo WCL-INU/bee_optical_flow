@@ -238,6 +238,17 @@ uv run python -m src.extract_video_features ^
   --coordinate-preset auto
 ```
 
+여러 패턴을 한 번에 지정할 수도 있습니다. 같은 파일이 여러 패턴에 중복 매칭되면 한 번만 처리됩니다.
+
+```powershell
+uv run python -m src.extract_video_features ^
+  --video-dir D:\bee_videos ^
+  --pattern "ANU-25-summer-3_*.mp4" "ANU-25-summer-12_*.mp4" "ANU-25-summer-20_*.mp4" ^
+  --output-dir analysis\video_features\output ^
+  --preset selected ^
+  --coordinate-preset auto
+```
+
 빠른 시험 실행이 필요하면 일부 프레임만 샘플링할 수 있습니다. `--frame-stride 5`는 5 frame pair마다 한 번만 feature를 계산하므로 처리 시간이 줄어듭니다.
 
 ```powershell
@@ -276,7 +287,7 @@ uv run python -m src.extract_video_features ^
 | 옵션 | 설명 |
 | --- | --- |
 | `--video-dir DIR` | 영상 파일이 있는 디렉토리 |
-| `--pattern PATTERN` | 처리할 영상 glob 패턴 |
+| `--pattern PATTERN ...` | 처리할 영상 glob 패턴. 여러 개 지정 가능 |
 | `--videos PATH ...` | 특정 영상 목록 직접 지정 |
 | `--output-dir DIR` | feature CSV 산출 디렉토리 |
 | `--preset selected` | `src/main.py`의 처리 preset 재사용 |
