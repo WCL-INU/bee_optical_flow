@@ -38,6 +38,7 @@
 | --- | --- |
 | `src/bee_entrance_count.py` | optical-flow 계산, 경계 flux 계산, persistence/component filter, CSV 및 preview 출력의 핵심 구현 |
 | `src/main.py` | 여러 영상을 batch/compare/groups/evaluate/tune 모드로 실행하는 편의 runner |
+| `src/extract_video_features.py` | 참값 없이 영상에서 밝기/선명도/flow/component/방향 혼잡도 feature를 추출하는 batch 도구 |
 | `src/optical_count.py` | 기본 비교 영상 2개를 실행하는 작은 wrapper |
 | `src/capture.py` | preview 영상에서 특정 프레임을 이미지로 추출해 ROI/overlay를 확인하는 보조 스크립트 |
 | `src/vis.py`, `src/vis_arr.py`, `src/vis_arr2.py` | optical-flow magnitude, arrow, HSV 방향 시각화 실험 스크립트 |
@@ -210,6 +211,98 @@ uv run python -m src.main --mode batch --preset selected --dry-run
 ## 시각화 보조 스크립트
 
 `src/vis.py`는 ROI의 optical-flow magnitude를 heatmap으로 겹쳐 저장합니다. `src/vis_arr.py`는 일정 간격의 flow vector를 화살표로 표시해 움직임 방향을 빠르게 확인하는 용도입니다. `src/vis_arr2.py`는 flow 방향을 HSV hue로, 강도를 value로 표현해 전체 flow field의 방향 분포를 확인합니다. `src/sep_blob.py`는 flow magnitude mask에 morphology와 connected component 분석을 적용해 움직임 blob 후보가 어떻게 분리되는지 보는 실험용 스크립트입니다.
+
+## 영상 feature 추출
+
+`src/extract_video_features.py`는 실제 이출입량 같은 참값을 사용하지 않고, 영상 자체에서 측정 가능한 신뢰도/오차 원인 후보 feature를 추출하는 배치 스크립트입니다. 서버에 원본 영상이 있을 때 이 스크립트를 실행하고, 생성된 CSV를 로컬로 가져와 회귀 오차와의 상관관계를 분석하는 용도로 사용합니다.
+
+추출하는 주요 feature 범위:
+
+- ROI, 입구 영역, 배경 영역의 밝기 평균/분산, 분위수, dynamic range, 어두운 픽셀 비율, 밝은 픽셀 비율, 포화 픽셀 비율, entropy
+- HSV saturation/value 통계
+- blur/선명도 지표: Laplacian variance, Tenengrad, edge density
+- 연속 프레임 차이: frame difference 평균, p90, 변화 픽셀 비율
+- optical-flow magnitude, normal-flow, active pixel 비율, 방향 entropy
+- raw/persistent/filtered candidate pixel 수와 component 수/면적 통계
+- top/bottom/left/right 경계별 raw/filtered in/out flux
+- filtered/raw retention, in/out share, direction balance 같은 혼잡도/방향 분리 후보 지표
+
+서버에서 전체 영상 feature를 추출하는 기본 실행 예:
+
+```powershell
+uv run python -m src.extract_video_features ^
+  --video-dir D:\bee_videos ^
+  --pattern "ANU-25-summer-*.mp4" ^
+  --output-dir analysis\video_features\output ^
+  --preset selected ^
+  --coordinate-preset auto
+```
+
+빠른 시험 실행이 필요하면 일부 프레임만 샘플링할 수 있습니다. `--frame-stride 5`는 5 frame pair마다 한 번만 feature를 계산하므로 처리 시간이 줄어듭니다.
+
+```powershell
+uv run python -m src.extract_video_features ^
+  --video-dir D:\bee_videos ^
+  --pattern "ANU-25-summer-*.mp4" ^
+  --output-dir analysis\video_features\output_stride5 ^
+  --preset selected ^
+  --coordinate-preset auto ^
+  --frame-stride 5
+```
+
+특정 영상만 처리:
+
+```powershell
+uv run python -m src.extract_video_features ^
+  --videos videos\ANU-25-summer-3_20260318_150000.mp4 ^
+  --output-dir analysis\video_features\output_one ^
+  --preset selected
+```
+
+실행 계획만 확인:
+
+```powershell
+uv run python -m src.extract_video_features ^
+  --video-dir D:\bee_videos ^
+  --pattern "ANU-25-summer-*.mp4" ^
+  --preset selected ^
+  --dry-run
+```
+
+프레임별 상세 CSV까지 저장하려면 `--write-frame-csv`를 추가합니다. 전체 영상에 대해 프레임별 CSV를 저장하면 파일이 매우 커질 수 있으므로, 보통은 비디오별 요약 CSV와 window CSV만 먼저 생성합니다.
+
+주요 옵션:
+
+| 옵션 | 설명 |
+| --- | --- |
+| `--video-dir DIR` | 영상 파일이 있는 디렉토리 |
+| `--pattern PATTERN` | 처리할 영상 glob 패턴 |
+| `--videos PATH ...` | 특정 영상 목록 직접 지정 |
+| `--output-dir DIR` | feature CSV 산출 디렉토리 |
+| `--preset selected` | `src/main.py`의 처리 preset 재사용 |
+| `--coordinate-preset auto` | 영상 파일명으로 ROI/입구 좌표 preset 자동 선택 |
+| `--roi X1 Y1 X2 Y2` | ROI 좌표 직접 지정 |
+| `--entrance X1 Y1 X2 Y2` | 입구 경계 좌표 직접 지정 |
+| `--frame-stride N` | N frame pair마다 한 번 feature 계산 |
+| `--max-frame-pairs N` | 테스트용 최대 frame pair 수 제한 |
+| `--window-sec SEC` | window 요약 길이. 기본값은 120초 |
+| `--write-frame-csv` | 프레임별 feature CSV 저장 |
+
+생성 결과:
+
+- `video_image_flow_features.csv`: 비디오별 요약 feature. 기존 검증 데이터와 `video` 컬럼으로 join할 수 있습니다.
+- `video_image_flow_features_windows.csv`: 비디오/window별 feature. 시간 구간별 오차 원인을 볼 때 사용합니다.
+- `video_image_flow_features_dictionary.csv`: feature 컬럼군 설명.
+- `{video_stem}_image_flow_features_frame.csv`: `--write-frame-csv` 사용 시 생성되는 프레임별 상세 feature.
+
+서버에서 `video_image_flow_features.csv`를 가져온 뒤, 기존 선형 회귀 오차 분석에 feature를 병합하려면 다음을 실행합니다.
+
+```powershell
+uv run python analysis\reliability_factor\analyze_error_factors.py ^
+  --feature-csv analysis\video_features\output\video_image_flow_features.csv
+```
+
+분석 결과는 `analysis/reliability_factor/output/error_factor_report.md`와 관련 CSV/그래프로 저장됩니다.
 ## Validation Viewer
 
 검증 데이터 뷰어는 `validation/build_data_viewer.py`가 담당합니다. `validation/data/merged_data.xlsx`를 읽고, 선형 회귀와 flat-exponential 회귀를 계산한 뒤 정적 HTML 뷰어를 생성합니다.
