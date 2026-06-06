@@ -295,14 +295,6 @@ uv run python -m src.extract_video_features ^
 - `video_image_flow_features_dictionary.csv`: feature 컬럼군 설명.
 - `{video_stem}_image_flow_features_frame.csv`: `--write-frame-csv` 사용 시 생성되는 프레임별 상세 feature.
 
-서버에서 `video_image_flow_features.csv`를 가져온 뒤, 기존 선형 회귀 오차 분석에 feature를 병합하려면 다음을 실행합니다.
-
-```powershell
-uv run python analysis\reliability_factor\analyze_error_factors.py ^
-  --feature-csv analysis\video_features\output\video_image_flow_features.csv
-```
-
-분석 결과는 `analysis/reliability_factor/output/error_factor_report.md`와 관련 CSV/그래프로 저장됩니다.
 ## Validation Viewer
 
 검증 데이터 뷰어는 `validation/build_data_viewer.py`가 담당합니다. `validation/data/merged_data.xlsx`를 읽고, 선형 회귀와 flat-exponential 회귀를 계산한 뒤 정적 HTML 뷰어를 생성합니다.
