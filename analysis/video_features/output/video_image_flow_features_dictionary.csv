@@ -1,0 +1,11 @@
+column_pattern,meaning
+roi_*,"ROI brightness, contrast, exposure, entropy, blur, edge and color features."
+entrance_*,Same image-quality features inside the entrance rectangle.
+background_*,Same image-quality features outside the entrance rectangle but inside ROI.
+frame_diff_*,Temporal image-change features between consecutive sampled frames.
+*_flow_*,"Optical-flow magnitude, normal-flow and activity ratios."
+raw_candidate_*,Pixels/components passing raw optical-flow thresholds before persistence/area filters.
+filtered_candidate_*,Pixels/components remaining after persistence/area filters.
+top/bottom/left/right_*,Boundary-edge-specific candidate pixels and directional flux.
+*_direction_entropy,0-1 normalized direction entropy; higher means more mixed motion directions.
+*_retention/ratio/share/balance,"Filter retention, in/out share and bidirectional balance indicators."
