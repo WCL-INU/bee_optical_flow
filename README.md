@@ -306,6 +306,37 @@ uv run python -m src.extract_video_features ^
 - `video_image_flow_features_dictionary.csv`: feature 컬럼군 설명.
 - `{video_stem}_image_flow_features_frame.csv`: `--write-frame-csv` 사용 시 생성되는 프레임별 상세 feature.
 
+## Feature/Error Analysis Utility
+
+`src/analyze_video_feature_errors.py`는 비디오 feature, 검증 카운트, 회귀 모델 계수를 합쳐 분석용 테이블을 만들고, 원하는 feature/target 쌍의 상관관계를 계산합니다.
+
+기기 3번의 선형회귀 오차와 feature 상관관계 분석:
+
+```powershell
+uv run python -m src.analyze_video_feature_errors --device 3 --top 20 --scatter
+```
+
+주요 옵션:
+
+| 옵션 | 설명 |
+| --- | --- |
+| `--features PATH` | 입력 feature CSV. 기본값은 `analysis/video_features/output/video_image_flow_features.csv` |
+| `--truth PATH` | 검증 카운트/flux 테이블. CSV/XLSX 지원 |
+| `--models PATH` | 회귀 모델 비교 CSV. 기본값은 `validation/output/regression_model_comparison.csv` |
+| `--device 3` | 특정 기기만 분석. 여러 기기는 `--device 3 5` 또는 `--device 3,5` |
+| `--targets COL ...` | 분석할 오차/target 컬럼. 기본값은 `total_abs_error`, `sum_abs_error`, `in_abs_error`, `out_abs_error` |
+| `--feature-regex REGEX` | 특정 feature 이름 패턴만 분석 |
+| `--method pearson|spearman` | 상위 결과 정렬 기준 상관계수 |
+| `--scatter` | 상위 feature-target 쌍 산점도 PNG 저장 |
+
+생성 결과:
+
+- `{device}_video_features_with_linear_errors.csv`: feature, 실제 카운트, 예측값, signed/absolute error가 결합된 분석용 테이블.
+- `{device}_feature_error_correlations.csv`: target-feature 쌍별 Pearson/Spearman 상관계수.
+- `{device}_feature_error_scatter.png`: `--scatter` 사용 시 생성되는 상위 쌍 산점도.
+
+Python 코드에서 직접 사용할 때는 `build_feature_error_table`, `numeric_columns`, `pairwise_correlations`, `top_correlations`, `merge_extra_tables`를 import해서 여러 테이블과 컬럼쌍을 조합할 수 있습니다.
+
 ## Validation Viewer
 
 검증 데이터 뷰어는 `validation/build_data_viewer.py`가 담당합니다. `validation/data/merged_data.xlsx`를 읽고, 선형 회귀와 flat-exponential 회귀를 계산한 뒤 정적 HTML 뷰어를 생성합니다.
