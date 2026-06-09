@@ -327,15 +327,37 @@ uv run python -m src.analyze_video_feature_errors --device 3 --top 20 --scatter
 | `--targets COL ...` | 분석할 오차/target 컬럼. 기본값은 `total_abs_error`, `sum_abs_error`, `in_abs_error`, `out_abs_error` |
 | `--feature-regex REGEX` | 특정 feature 이름 패턴만 분석 |
 | `--method pearson|spearman` | 상위 결과 정렬 기준 상관계수 |
+| `--outlier-filter none|iqr|zscore` | target-feature 상관계수 계산 전 쌍별 이상치 제거 |
+| `--outlier-iqr-multiplier 1.5` | IQR 이상치 제거 기준 배수 |
+| `--outlier-z-threshold 3.0` | z-score 이상치 제거 기준 |
+| `--feature-correlations` | feature-feature 쌍별 Pearson/Spearman 상관계수도 함께 계산 |
+| `--feature-correlation-max-abs 0.999` | 출력 요약에서 완전중복에 가까운 feature 쌍을 제외하고 볼 기준 |
+| `--group-features` | 높은 상관 feature들을 그룹화하고 그룹별 대표 feature 선택 |
+| `--feature-group-threshold 0.95` | feature 그룹화에 사용할 절대 상관계수 기준 |
+| `--representative-scatter` | 대표 feature와 오차 target의 상위 쌍 산포도 PNG 저장 |
+| `--combine-representatives` | 대표 feature들을 조합한 ridge 선형 score를 target별로 교차검증 평가 |
+| `--combo-top-features 20` | 조합 모델에 사용할 target별 상위 대표 feature 수 |
+| `--combo-alpha 10` | 조합 모델 ridge 정규화 강도 |
+| `--combo-folds 5` | 조합 모델 교차검증 fold 수 |
+| `--covariance` | target-feature 쌍별 공분산도 함께 계산 |
+| `--covariance-normalization none|zscore|minmax|robust` | 공분산 계산 전 feature/target 정규화 방식. `zscore` 공분산은 Pearson 상관계수와 같습니다 |
 | `--scatter` | 상위 feature-target 쌍 산점도 PNG 저장 |
 
 생성 결과:
 
 - `{device}_video_features_with_linear_errors.csv`: feature, 실제 카운트, 예측값, signed/absolute error가 결합된 분석용 테이블.
 - `{device}_feature_error_correlations.csv`: target-feature 쌍별 Pearson/Spearman 상관계수.
+- `{device}_feature_feature_correlations.csv`: `--feature-correlations` 사용 시 생성되는 feature-feature 쌍별 Pearson/Spearman 상관계수.
+- `{device}_feature_correlation_groups.csv`: `--group-features` 사용 시 생성되는 유사 feature 그룹 요약.
+- `{device}_representative_features.csv`: `--group-features` 사용 시 생성되는 그룹별 대표 feature.
+- `{device}_representative_feature_error_scatter.png`: `--representative-scatter` 사용 시 생성되는 대표 feature/error 산포도.
+- `{device}_representative_feature_error_models.csv`: `--combine-representatives` 사용 시 생성되는 target별 조합 모델 평가.
+- `{device}_representative_feature_error_predictions.csv`: `--combine-representatives` 사용 시 생성되는 조합 모델 교차검증 예측값.
+- `{device}_representative_feature_error_model_scatter.png`: `--combine-representatives` 사용 시 생성되는 조합 score/error 산포도.
+- `{device}_feature_error_covariances.csv`: `--covariance` 사용 시 생성되는 target-feature 쌍별 공분산.
 - `{device}_feature_error_scatter.png`: `--scatter` 사용 시 생성되는 상위 쌍 산점도.
 
-Python 코드에서 직접 사용할 때는 `build_feature_error_table`, `numeric_columns`, `pairwise_correlations`, `top_correlations`, `merge_extra_tables`를 import해서 여러 테이블과 컬럼쌍을 조합할 수 있습니다.
+Python 코드에서 직접 사용할 때는 `build_feature_error_table`, `numeric_columns`, `pairwise_correlations`, `pairwise_covariances`, `top_correlations`, `top_covariances`, `merge_extra_tables`를 import해서 여러 테이블과 컬럼쌍을 조합할 수 있습니다.
 
 ## Validation Viewer
 

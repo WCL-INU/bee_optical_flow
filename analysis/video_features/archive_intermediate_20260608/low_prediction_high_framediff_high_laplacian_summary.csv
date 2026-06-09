@@ -1,0 +1,2 @@
+rows,low_pred_q25,high_frame_diff_q75,high_laplacian_q75,risk_rows,risk_median_under_error,risk_mean_under_error,risk_p90_under_error,low_pred_under_median_error
+2522,16.87256838501731,5.382663514900851,8.962697582493718,0,,,,26.05341508832457
