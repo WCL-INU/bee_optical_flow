@@ -12,12 +12,17 @@ try:
         save_timing_summary,
     )
 except ModuleNotFoundError:
-    from bee_entrance_count import Config, compare_videos, process_video, save_timing_summary
+    from bee_entrance_count import (
+        Config,
+        compare_videos,
+        process_video,
+        save_timing_summary,
+    )
 
 
-VIDEO_DIR = Path("videos/videos")
-OUTPUT_ROOT = Path("bee_count_output") / "runs"
-DEFAULT_PATTERN = "ANU-25-summer-20_*.mp4"
+VIDEO_DIR = Path("videos")
+OUTPUT_ROOT = Path("bee_count_output") / "bee_count_output" / "v202607"
+DEFAULT_PATTERN = "ANU-25-summer-*_202607*.mp4"
 
 
 PRESETS = {
@@ -180,56 +185,101 @@ COORDINATE_DEFAULT = "default"
 COORDINATE_AUTO = "auto"
 
 COORDINATE_PRESETS = {
+    "anu25_summer_1": {
+        "video_key": "ANU-25-summer-1",
+        "roi": (410, 980, 1640, 1232),
+        "entrance": (510, 1080, 1590, 1202),
+    },
+    "anu25_summer_2": {
+        "video_key": "ANU-25-summer-2",
+        "roi": (310, 880, 1540, 1200),
+        "entrance": (380, 950, 1440, 1140),
+    },
     "anu25_summer_3": {
         "video_key": "ANU-25-summer-3",
-        "roi": (940, 970, 1310, 1270),
-        "entrance": (1040, 1070, 1210, 1170),
+        "roi": (280, 920, 1510, 1180),
+        "entrance": (340, 1010, 1410, 1120),
     },
-    "anu25_summer_5": {
-        "video_key": "ANU-25-summer-5",
-        "roi": (760, 970, 1130, 1270),
-        "entrance": (860, 1070, 1030, 1170),
+    "anu25_summer_4": {
+        "video_key": "ANU-25-summer-4",
+        "roi": (350, 980, 1620, 1230),
+        "entrance": (410, 1050, 1510, 1190),
+    },
+    "anu25_summer_6": {
+        "video_key": "ANU-25-summer-6",
+        "roi": (350, 980, 1620, 1230),
+        "entrance": (470, 1050, 1510, 1190),
     },
     "anu25_summer_7": {
         "video_key": "ANU-25-summer-7",
-        "roi": (850, 930, 1220, 1230),
-        "entrance": (950, 1030, 1120, 1130),
+        "roi": (750, 980, 1520, 1230),
+        "entrance": (870, 1050, 1410, 1190),
+    },
+    "anu25_summer_8": {
+        "video_key": "ANU-25-summer-8",
+        "roi": (350, 980, 1620, 1230),
+        "entrance": (460, 1110, 1510, 1210),
     },
     "anu25_summer_9": {
         "video_key": "ANU-25-summer-9",
-        "roi": (920, 940, 1290, 1240),
-        "entrance": (1020, 1040, 1190, 1140),
+        "roi": (380, 960, 1620, 1230),
+        "entrance": (480, 1030, 1520, 1190),
+    },
+    "anu25_summer_10": {
+        "video_key": "ANU-25-summer-10",
+        "roi": (350, 980, 1620, 1230),
+        "entrance": (410, 1050, 1510, 1200),
+    },
+    "anu25_summer_11": {
+        "video_key": "ANU-25-summer-11",
+        "roi": (840, 840, 1610, 1170),
+        "entrance": (940, 940, 1510, 1070),
     },
     "anu25_summer_12": {
         "video_key": "ANU-25-summer-12",
-        "roi": (1040, 1020, 1410, 1320),
-        "entrance": (1140, 1120, 1310, 1220),
+        "roi": (370, 980, 1620, 1230),
+        "entrance": (470, 1050, 1540, 1200),
     },
     "anu25_summer_13": {
         "video_key": "ANU-25-summer-13",
-        "roi": (1280, 1030, 1650, 1330),
-        "entrance": (1380, 1130, 1550, 1230),
+        "roi": (170, 1000, 1620, 1232),
+        "entrance": (250, 1100, 1540, 1220),
     },
     "anu25_summer_14": {
         "video_key": "ANU-25-summer-14",
-        "roi": (930, 960, 1350, 1280),
-        "entrance": (1030, 1060, 1250, 1180),
+        "roi": (0, 980, 1620, 1232),
+        "entrance": (10, 1080, 1520, 1210),
     },
     "anu25_summer_15": {
         "video_key": "ANU-25-summer-15",
-        "roi": (1050, 670, 1470, 990),
-        "entrance": (1150, 770, 1370, 890),
+        "roi": (350, 980, 1620, 1230),
+        "entrance": (410, 1050, 1510, 1210),
     },
     "anu25_summer_16": {
         "video_key": "ANU-25-summer-16",
-        "roi": (940, 1000, 1310, 1300),
-        "entrance": (1040, 1100, 1210, 1200),
+        "roi": (350, 980, 1600, 1232),
+        "entrance": (410, 1080, 1500, 1220),
+    },
+    "anu25_summer_17": {
+        "video_key": "ANU-25-summer-17",
+        "roi": (310, 980, 1570, 1230),
+        "entrance": (400, 1080, 1470, 1200),
+    },
+    "anu25_summer_18": {
+        "video_key": "ANU-25-summer-18",
+        "roi": (250, 990, 1520, 1232),
+        "entrance": (350, 1090, 1420, 1220),
+    },
+    "anu25_summer_19": {
+        "video_key": "ANU-25-summer-19",
+        "roi": (370, 980, 1620, 1230),
+        "entrance": (470, 1050, 1510, 1190),
     },
     "anu25_summer_20": {
         "video_key": "ANU-25-summer-20",
-        "roi": (1020, 980, 1420, 1280),
-        "entrance": (1120, 1080, 1320, 1180),
-    },
+        "roi": (300, 980, 1620, 1230),
+        "entrance": (430, 1080, 1480, 1210),
+    }
 }
 
 
@@ -257,7 +307,16 @@ def select_videos(args):
         videos = videos[: args.limit]
 
     if not videos:
-        raise RuntimeError("No videos selected. Check --video-dir, --pattern, or --videos.")
+        raise RuntimeError(
+            "No videos selected. Check --video-dir, --pattern, or --videos."
+        )
+
+    preview_path = [
+        make_run_dir(args) / f"{stem}_preview.mp4"
+        for stem in [video.stem for video in videos]
+    ]
+
+    videos = [video for video, preview in zip(videos, preview_path) if not preview.exists()]
 
     missing = [video for video in videos if not video.exists()]
     if missing:
@@ -411,13 +470,11 @@ def load_truth(truth_csv):
 def fit_flux_units(df):
     in_positive = df["in"] > 0
     out_positive = df["out"] > 0
-    in_unit = (
-        df.loc[in_positive, "total_filtered_in_flux"].sum()
-        / max(df.loc[in_positive, "in"].sum(), 1e-6)
+    in_unit = df.loc[in_positive, "total_filtered_in_flux"].sum() / max(
+        df.loc[in_positive, "in"].sum(), 1e-6
     )
-    out_unit = (
-        df.loc[out_positive, "total_filtered_out_flux"].sum()
-        / max(df.loc[out_positive, "out"].sum(), 1e-6)
+    out_unit = df.loc[out_positive, "total_filtered_out_flux"].sum() / max(
+        df.loc[out_positive, "out"].sum(), 1e-6
     )
     return max(float(in_unit), 1e-6), max(float(out_unit), 1e-6)
 
@@ -447,7 +504,9 @@ def evaluate_summary(
     df["out_abs_error"] = (df["pred_out"] - df["out"]).abs()
     df["traffic_abs_error"] = (df["pred_traffic"] - df["true_traffic"]).abs()
     df["traffic_signed_error"] = df["pred_traffic"] - df["true_traffic"]
-    df["traffic_abs_pct_error"] = df["traffic_abs_error"] / df["true_traffic"].clip(lower=1.0)
+    df["traffic_abs_pct_error"] = df["traffic_abs_error"] / df["true_traffic"].clip(
+        lower=1.0
+    )
 
     zero_df = df[df["true_traffic"] == 0]
     active_df = df[df["true_traffic"] > 0]
@@ -463,20 +522,26 @@ def evaluate_summary(
         "in_flux_unit": in_unit,
         "out_flux_unit": out_unit,
         "traffic_mae": float(df["traffic_abs_error"].mean()),
-        "active_traffic_mae": float(active_df["traffic_abs_error"].mean())
-        if not active_df.empty
-        else 0.0,
-        "zero_mean_pred_traffic": float(zero_df["pred_traffic"].mean())
-        if not zero_df.empty
-        else 0.0,
-        "zero_max_pred_traffic": float(zero_df["pred_traffic"].max())
-        if not zero_df.empty
-        else 0.0,
+        "active_traffic_mae": (
+            float(active_df["traffic_abs_error"].mean()) if not active_df.empty else 0.0
+        ),
+        "zero_mean_pred_traffic": (
+            float(zero_df["pred_traffic"].mean()) if not zero_df.empty else 0.0
+        ),
+        "zero_max_pred_traffic": (
+            float(zero_df["pred_traffic"].max()) if not zero_df.empty else 0.0
+        ),
         "mean_abs_pct_error": float(df["traffic_abs_pct_error"].mean()),
         "target_video": target_video or "",
-        "target_true_traffic": float(target_row["true_traffic"]) if target_row is not None else 0.0,
-        "target_pred_traffic": float(target_row["pred_traffic"]) if target_row is not None else 0.0,
-        "target_abs_error": float(target_row["traffic_abs_error"]) if target_row is not None else 0.0,
+        "target_true_traffic": (
+            float(target_row["true_traffic"]) if target_row is not None else 0.0
+        ),
+        "target_pred_traffic": (
+            float(target_row["pred_traffic"]) if target_row is not None else 0.0
+        ),
+        "target_abs_error": (
+            float(target_row["traffic_abs_error"]) if target_row is not None else 0.0
+        ),
         "zero_weight": zero_weight,
         "target_weight": target_weight,
     }
@@ -664,7 +729,9 @@ def run_groups(videos, output_dir, config, args, group_size, slide):
         group = videos[start : start + group_size]
         if len(group) < group_size:
             continue
-        group_dir = output_dir / f"group_{group_idx:03d}_{group[0].stem}_to_{group[-1].stem}"
+        group_dir = (
+            output_dir / f"group_{group_idx:03d}_{group[0].stem}_to_{group[-1].stem}"
+        )
         group_dirs.append(group_dir)
         print(f"[group {group_idx}] {group[0].name} -> {group[-1].name}")
         summary_df, warnings = compare_videos(
@@ -711,7 +778,9 @@ def parse_args():
     parser.add_argument("--output-root", type=Path, default=OUTPUT_ROOT)
     parser.add_argument("--run-name")
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--truth-csv", type=Path, default=Path("videos") / "entrance.csv")
+    parser.add_argument(
+        "--truth-csv", type=Path, default=Path("videos") / "entrance.csv"
+    )
     parser.add_argument("--summary-csv", type=Path)
     parser.add_argument(
         "--target-video",

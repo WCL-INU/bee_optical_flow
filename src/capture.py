@@ -1,7 +1,7 @@
 import cv2
 import matplotlib.pyplot as plt
 
-video_path = "videos/ANU-25-summer-15_20260310_120000.mp4"
+video_path = "videos/ANU-25-summer-1_20260701_120000.mp4"
 
 cap = cv2.VideoCapture(video_path)
 ret, frame = cap.read()
