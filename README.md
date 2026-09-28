@@ -138,6 +138,14 @@ uv run python -m src.bee_entrance_count --compare videos/ANU-25-summer-6_2026040
 uv run python -m src.main --mode batch --preset selected
 ```
 
+여러 영상을 프로세스 4개로 병렬 처리:
+
+```powershell
+uv run python -m src.main --mode batch --preset selected --workers 4
+```
+
+`--workers`의 기본값은 `1`이며, `tune` 모드에서도 각 trial 안의 영상들을 같은 방식으로 병렬 처리합니다. CPU 코어 수와 디스크 읽기 속도를 고려해 값을 조절하세요.
+
 영상명에 맞는 좌표 preset을 자동 적용해서 batch 실행:
 
 ```powershell

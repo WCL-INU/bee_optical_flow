@@ -1,4 +1,5 @@
 import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import replace
 from pathlib import Path
 
@@ -594,15 +595,56 @@ def print_plan(videos, config, output_dir, mode, args):
     )
 
 
+def _initialize_batch_worker():
+    """Keep each worker from creating another large OpenCV thread pool."""
+    import cv2
+
+    cv2.setNumThreads(1)
+
+
+def _process_video_job(video, output_dir, video_config):
+    """Process-pool entry point; kept at module scope so it is picklable."""
+    result, _, _ = process_video(video, output_dir, video_config)
+    return result
+
+
 def run_batch(videos, output_dir, config, args):
     output_dir.mkdir(parents=True, exist_ok=True)
-    summaries = []
+    workers = getattr(args, "workers", 1)
+    if workers < 1:
+        raise ValueError("--workers must be at least 1.")
 
-    for idx, video in enumerate(videos, start=1):
-        print(f"[{idx}/{len(videos)}] Processing {video}")
-        video_config = resolve_config_for_video(video, config, args)
-        result, _, _ = process_video(video, output_dir, video_config)
-        summaries.append(result)
+    jobs = [
+        (video, resolve_config_for_video(video, config, args))
+        for video in videos
+    ]
+
+    if workers == 1 or len(jobs) <= 1:
+        summaries = []
+        for idx, (video, video_config) in enumerate(jobs, start=1):
+            print(f"[{idx}/{len(jobs)}] Processing {video}")
+            summaries.append(_process_video_job(video, output_dir, video_config))
+    else:
+        worker_count = min(workers, len(jobs))
+        print(f"Processing {len(jobs)} videos with {worker_count} workers")
+        summaries = [None] * len(jobs)
+        with ProcessPoolExecutor(
+            max_workers=worker_count,
+            initializer=_initialize_batch_worker,
+        ) as executor:
+            futures = {
+                executor.submit(_process_video_job, video, output_dir, video_config): (
+                    idx,
+                    video,
+                )
+                for idx, (video, video_config) in enumerate(jobs)
+            }
+            completed = 0
+            for future in as_completed(futures):
+                idx, video = futures[future]
+                summaries[idx] = future.result()
+                completed += 1
+                print(f"[{completed}/{len(jobs)}] Completed {video}")
 
     summary_df = pd.DataFrame(summaries)
     summary_path = output_dir / "batch_summary.csv"
@@ -778,6 +820,15 @@ def parse_args():
     parser.add_argument("--output-root", type=Path, default=OUTPUT_ROOT)
     parser.add_argument("--run-name")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help=(
+            "Number of worker processes for batch/tune video processing "
+            "(default: 1)."
+        ),
+    )
     parser.add_argument(
         "--truth-csv", type=Path, default=Path("videos") / "entrance.csv"
     )
