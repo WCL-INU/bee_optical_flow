@@ -1,4 +1,87 @@
 
+#### memo
+
+ANU-25-summer-1
+always same roi and entrance
+
+ANU-25-summer-2
+always same roi and entrance
+
+ANU-25-summer-3
+always same roi and entrance
+
+ANU-25-summer-4
+always same roi and entrance
+
+ANU-25-summer-5
+always same roi and entrance
+
+ANU-25-summer-6
+always same roi and entrance
+
+ANU-25-summer-7
+always same roi and entrance
+
+ANU-25-summer-8
+changed roi and entrance
+2026-07-01 ~ 2026-08-09
+2026-08-10 ~ 2026-08-31
+changed at 2026-08-10
+
+ANU-25-summer-9
+always same roi and entrance
+
+ANU-25-summer-10
+always same roi and entrance
+
+ANU-25-summer-11
+always same roi and entrance
+
+ANU-25-summer-12
+changed roi and entrance
+2026-07-01 ~ 2026-08-09
+2026-08-10 ~ 2026-08-31
+changed at 2026-08-10
+
+ANU-25-summer-13
+changed roi and entrance
+2026-07-01 ~ 2026-08-09
+2026-08-10 ~ 2026-08-31
+changed at 2026-08-10
+
+ANU-25-summer-14
+changed roi and entrance
+2026-07-01 ~ 2026-08-09
+2026-08-10 ~ 2026-08-31
+changed at 2026-08-10
+
+ANU-25-summer-15
+always same roi and entrance
+
+ANU-25-summer-16
+changed roi and entrance
+2026-07-01 ~ 2026-08-09
+2026-08-10 ~ 2026-08-31
+changed at 2026-08-10
+
+ANU-25-summer-17 *
+always same roi and entrance
+
+ANU-25-summer-18
+changed roi and entrance
+2026-07-01 ~ 2026-08-09
+2026-08-10 ~ 2026-08-31
+changed at 2026-08-10
+
+ANU-25-summer-19 *
+always same roi and entrance
+
+ANU-25-summer-20
+always same roi and entrance
+
+####
+
+
 ANU-25-summer-1
 roi:  x1, y1, x2, y2 = 410, 980, 1640, 1232
 entrance: x3, y3, x4, y4 = 510, 1080, 1590, 1202
@@ -62,5 +145,4 @@ entrance: x3, y3, x4, y4 = 350, 1090, 1420, 1220
 ANU-25-summer-19
 roi:  x1, y1, x2, y2 = 370, 980, 1620, 1230
 entrance: x3, y3, x4, y4 = 470, 1050, 1510, 1190
-
 
