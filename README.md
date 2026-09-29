@@ -182,6 +182,144 @@ uv run python -m src.main --mode tune --preset selected --truth-csv videos/entra
 uv run python -m src.main --mode batch --preset selected --dry-run
 ```
 
+## 기기별 화면 구도 변경 감시
+
+`src/detect_scene_changes.py`는 같은 기기의 영상을 촬영 시각 순서로 비교하여
+**어느 영상부터 화면 구도가 바뀌었는지** 보고합니다. 영상 내부의 변경 시점을
+찾거나 ROI를 수정하지 않습니다. 파일명은 `기기명_YYYYMMDD_HHMMSS.mp4` 형식입니다.
+
+```bash
+# 특정 기기의 영상 전체 비교
+uv run python -m src.detect_scene_changes --device ANU-25-summer-3
+
+# 처음 6개 영상으로 시험 (limit은 기기별 적용)
+uv run python -m src.detect_scene_changes --device ANU-25-summer-3 --limit 6
+
+# 촬영 날짜 범위 지정 (시작일과 종료일 포함)
+uv run python -m src.detect_scene_changes --device ANU-25-summer-3 --start-date 2026-03-01 --end-date 2026-03-31
+
+# 일시 범위 지정 (양쪽 시각 포함)
+uv run python -m src.detect_scene_changes --device ANU-25-summer-3 --start-datetime "2026-03-01 09:30:00" --end-datetime "2026-03-05 18:00:00"
+
+# 디렉토리 안의 모든 기기를 각각 비교
+uv run python -m src.detect_scene_changes --video-dir videos
+```
+
+영상당 기본 21개 프레임을 균등 추출하여 시간 중앙값 배경을 만들고, 밝기 변화를
+보정한 뒤 변동이 큰 픽셀 주변을 비교에서 제외합니다. 움직이는 벌과 흔들리는
+풀의 영향을 줄이기 위한 처리이며, 계속 같은 위치를 가리는 벌 무리는 남을 수 있습니다.
+
+날짜는 파일명의 촬영 시각을 기준으로 하며 종료일은 하루 전체를 포함합니다.
+시작일/종료일 중 하나만 지정할 수도 있습니다. 날짜 필터 이후 기기별 `--limit`이
+적용되며, 선택 기간 안의 첫 비교 가능한 영상이 기준 화면이 됩니다. 따라서 기간
+시작 전에 발생한 변화는 이 실행에서 판정하지 않습니다.
+
+시간까지 지정하려면 `--start-datetime` / `--end-datetime`을 사용합니다.
+`YYYY-MM-DD HH:MM:SS`, `YYYY-MM-DD HH:MM` 및 공백 대신 `T`를 쓰는 형식을
+지원하며 초를 생략하면 `00`초입니다. 파일명 시각 그대로 비교하며 시간대 변환은
+하지 않습니다. 양쪽 시각을 포함하고, 한쪽만 지정하거나 시작 날짜와 종료 일시를
+조합할 수도 있습니다. 같은 쪽의 날짜 옵션과 일시 옵션은 함께 사용할 수 없습니다.
+
+먼저 Canny/HoughLinesP로 긴 선분을 추출하고 위치·방향·겹치는 길이로 일대일
+대응합니다. 짧은 선과 변동 영역에 걸친 선을 제외하고 두꺼운 경계의 중복 선을
+합칩니다. 최소 3개의 대응 선과 양쪽 선분 수 대비 65% 이상 일치, 서로 다른 방향의
+경계가 확인되면 동일 구도로 판단합니다. 평행선만으로는 선 방향으로의 이동을
+판단할 수 없으므로 이 조건을 충족하지 않습니다. 이후 고정 경계 일치, ECC 정합,
+SIFT 특징점과 RANSAC으로 배경의 대응 관계를 확인합니다.
+
+특징점 대응 소실만으로는 더 이상 구도 변경으로 판정하지 않습니다. 젖은 땅이나
+그림자처럼 표면만 달라질 수 있기 때문입니다. 대응점을 잃었을 때는 양쪽에 충분한
+서로 다른 방향의 긴 선들이 있고 선 배치도 거의 대응하지 않는 경우에만 변경 후보로
+삼으며, 나머지는 `unknown`으로 보류합니다. 선을 벌통 경계로 의미적으로 분류하는
+모델은 아니므로 풀·그림자가 만든 선이나 가려진 경계로 인한 오판 가능성은 남습니다.
+
+첫 비교 가능한 영상을 기준으로 유지하다가, 변경 후보와 같은 새 구도가 후속
+영상에서도 확인되면 최초 후보 영상부터 변경으로 보고하고 새 기준을 설정합니다.
+기본 확인 수는 2개 영상이며 `--confirmations`로 늘릴 수 있습니다. 어둡거나 배경
+특징이 부족한 영상은 `unknown`으로 기록하고 확인 수에 포함하지 않습니다.
+한 번 달라졌다가 기존 구도로 돌아온 경우는 변경 보고에서 제외합니다.
+
+산출물은 기본 `bee_count_output/scene_changes/`에 저장됩니다.
+
+- `report.md`: 기기별 최초 변경 영상, 마지막 정상 영상, 확인 영상과 전후 이미지 링크
+- `scene_changes.json`: 변경 이벤트, 후속 근거 부족으로 확인 대기 중인 후보, 실행 설정
+- `video_checks.csv`: 모든 영상의 판정, 판단 불가 이유, `reference_lines`, `current_lines`, `matched_lines`, `line_match_ratio`
+- `*_change.jpg`: 변경 전후 대표 배경. 빨간 부분은 제외한 변동 영역, 청록색은 추출한 긴 선분(모두 대응에 성공했다는 뜻은 아님)
+
+`--samples`는 영상당 샘플 수, `--max-width`는 분석 이미지 최대 너비(기본 800),
+`--shift-fraction`은 이미지 대각선 대비 이동 허용치(기본 0.015)입니다.
+수치는 초기 휴리스틱이며 실제 변경 이력으로 검증해야 합니다. 대응점과 선 배치가
+함께 달라지는 큰 장면 변화도 후보가 되지만, 심한 조명 변화·가림·계절 변화와 완전히 구분된다는
+보장은 없습니다. 보고하는 시간은 파일명에 기록된 영상 시각이며, 촬영 공백 중
+실제 변경 시점은 마지막 정상 영상과 최초 변경 영상 사이에 있습니다.
+
+검증 실행: `uv run python -m unittest discover -s tests -v`
+
+### 저장된 타임랩스로 구도 변경 감지
+
+`device1.mp4`~`device20.mp4`와 같은 이름의 CSV가 있는 경우 원본 영상을 다시 열지
+않고 분석할 수 있습니다. CSV의 `output_start_sec`와 `output_frames`로 원본 영상별
+구간을 나누고, `video_start`의 촬영 일시로 변경 시점을 보고합니다. 예전 CSV처럼
+`backend`, `sampling` 열이 없는 파일도 지원합니다.
+
+```bash
+# 기본적으로 device1~device20 전체 선택
+uv run python -m src.detect_scene_changes --timelapse-dir bee_count_output/timelapse --workers 2
+
+# 특정 파일과 원본 촬영 일시 범위만 선택
+uv run python -m src.detect_scene_changes --timelapse-dir bee_count_output/timelapse --timelapse-ids 1 3 20 --start-date 2026-07-05 --end-date 2026-07-10 --workers 2
+
+# 각 파일의 첫 2개 원본 구간만으로 시험
+uv run python -m src.detect_scene_changes --timelapse-dir bee_count_output/timelapse --limit 2 --output-dir bee_count_output/timelapse_scene_changes_smoke
+```
+
+기본 출력은 `bee_count_output/timelapse_scene_changes/`입니다. 최상위 `report.md`와
+`scene_changes.json`은 전체 요약이고, 각 `deviceN/` 아래에 개별 보고서,
+`video_checks.csv`, 변경 전후 이미지가 저장됩니다. 변경 이벤트에는 원본 촬영 일시와
+타임랩스 재생 위치(초)가 함께 기록됩니다. 원본 검사 모드와 같은 날짜·일시 범위,
+샘플 수, 이동 임계값, 후속 확인 개수 옵션을 사용할 수 있습니다.
+
+`--workers`는 이 모드에서 동시에 처리할 **기기 파일 수**입니다. 각 파일은 한 번
+열어 원본 구간 순서대로 읽으며, 기존 원본 영상 배경 캐시는 사용하지 않습니다.
+`--limit`은 날짜 필터를 적용한 뒤 기기별 원본 구간 수를 제한합니다.
+
+날짜 캡션 자체가 구도 특징으로 인식되지 않도록 화면 상단 12%를 잘라낸 뒤 비교합니다.
+캡션 위치가 다르면 `--caption-fraction`을 조정하세요. CSV/MP4의 프레임 개수와
+구간 연속성을 확인하며, 매핑이 맞지 않으면 추측하지 않고 해당 기기를 오류로 보고합니다.
+`error.json`을 남기고 나머지 기기를 처리한 뒤 종료 코드 1을 반환합니다.
+
+`--sampling first`로 만든 타임랩스에는 원본 앞부분만 들어 있습니다. 따라서 원본
+2분에서 얻는 시간적 배경보다 벌·가림을 배제할 근거가 적고, 압축과 상단 잘라내기도
+판정에 영향을 줄 수 있습니다. 타임랩스만 분석한 결과를 원본 전체 분석과 동일한
+정확도로 해석해서는 안 됩니다.
+
+### 구도 감지 실행 속도
+
+영상마다 21개 위치로 이동해서 압축 프레임을 읽는 작업이 주된 비용입니다.
+대표 배경·마스크·SIFT 특징을 기본 `bee_count_output/scene_background_cache/`에
+캐시하므로, 같은 영상을 다시 검사할 때 디코딩과 배경 생성을 건너뜁니다.
+영상의 경로·크기·수정 시각, 샘플 수, 분석 해상도, 캐시 버전 및 라이브러리 버전이
+같을 때만 재사용합니다. 판정 임계값이나 검사 기간만 바꾸는 경우에는 재사용됩니다.
+캐시는 디스크 공간을 사용하며 해당 디렉토리를 지워도 다음 실행에서 재생성됩니다.
+전처리 알고리즘을 수정하는 개발자는 `BACKGROUND_CACHE_VERSION`도 올려야 합니다.
+
+```bash
+# 처음 처리하는 영상은 2개씩 준비. 판정은 여전히 촬영 순서대로 실행
+uv run python -m src.detect_scene_changes --device ANU-25-summer-3 --workers 2
+
+# 캐시 위치 지정 또는 캐시를 끄고 검증
+uv run python -m src.detect_scene_changes --device ANU-25-summer-3 --cache-dir bee_count_output/my_cache
+uv run python -m src.detect_scene_changes --device ANU-25-summer-3 --no-cache
+```
+
+`--workers` 기본값은 1입니다. 병렬 준비 개수는 제한되어 있어 전체 영상의 배경을
+메모리에 한꺼번에 적재하지 않습니다. CPU·디스크 상황에 따라 병렬 실행이 더 느릴
+수 있으므로 2부터 비교하세요. `video_checks.csv`의 `cache_hit`, `background_sec`,
+`comparison_sec`로 캐시 사용 여부와 영상별 처리 시간을 확인할 수 있습니다.
+병렬 실행의 영상별 시간 합계는 전체 실행 시간과 다릅니다.
+기본 샘플 수와 분석 해상도는 그대로 유지합니다. 이를 줄이면 빨라질 수 있지만
+벌을 배제하는 효과와 작은 구도 변화의 감지 성능이 달라질 수 있습니다.
+
 ## 산출물
 
 ### 입구 자동 탐색 실험
