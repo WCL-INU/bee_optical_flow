@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ROI · ENT 편집기</title>
+<style>
+body{margin:24px auto;padding:0 20px;max-width:1300px;background:#17202a;color:#eef3f8;font:16px system-ui,sans-serif}h1{font-size:24px}label{display:inline-flex;flex-direction:column;gap:6px;margin:0 14px 12px 0}input,select,button{font:inherit;padding:9px;border-radius:6px;border:1px solid #768696;background:#273646;color:inherit}button{cursor:pointer;background:#245778}button:disabled{opacity:.5;cursor:wait}select{max-width:100%}#status{min-height:24px;color:#ffdc83;white-space:pre-wrap}canvas{display:block;width:100%;height:auto;background:#111;outline:2px solid #687788}canvas:focus{outline-color:#ffdc83}.hint{color:#c4d2e0;line-height:1.7}#coords{font-family:monospace}#editor[hidden],#picker[hidden]{display:none}
+</style>
+<h1>ROI · ENT 기간별 편집기</h1>
+<p class="hint">기기와 적용 기간을 정한 뒤, 경계가 잘 보이는 대표 영상 하나에서 편집하세요.</p>
+<form id="period">
+<label>기기명 또는 번호<input id="device" placeholder="8 또는 ANU-25-summer-8" required></label>
+<label>시작 일시<input id="start" placeholder="2026-07-01 00:00:00" required></label>
+<label>종료 일시<input id="end" placeholder="2026-08-09 23:59:59" required></label>
+<button type="submit">영상 목록 보기</button>
+</form>
+<p class="hint">YYYY-MM-DD 또는 YYYY-MM-DD HH:MM:SS · 날짜만 입력하면 하루 전체 · 양 끝 포함 · 파일명 촬영 시각 기준</p>
+<form id="picker" hidden><label>대표 영상<select id="videos"></select></label> <button type="submit">프레임 열기</button></form>
+<p id="status" role="status" aria-live="polite">적용 기간을 입력하세요.</p>
+<section id="editor" hidden>
+<p id="caption"></p>
+<canvas id="canvas" tabindex="0" aria-label="ROI 경계 편집 화면. Space로 경계 선택 후 방향키로 이동"></canvas>
+<p class="hint">Space: 경계 선택 · 방향키: 1px · Shift+방향키: 10px · n / b: 다음 / 이전 프레임 · Enter: 저장 · Esc: 마지막 저장 좌표로 복원<br>ROI: 초록 · ENT: 하늘색 · 선택한 변: 노랑 · 화면에 포커스가 있을 때 단축키가 동작합니다.</p>
+<p id="coords"></p>
+<label>프레임 이동 간격<input id="step" type="number" min="1" value="1" style="width:90px"></label>
+<button id="previous">이전 프레임 (b)</button> <button id="next">다음 프레임 (n)</button> <button id="save">저장 (Enter)</button>
+</section>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const canvas=$('canvas'), ctx=canvas.getContext('2d');
+let period=null, model=null, picture=null, selected=-1, baseline=null, busy=false, dirty=false;
+const names=['위','아래','왼쪽','오른쪽'];
+const copy=value=>JSON.parse(JSON.stringify(value));
+function status(text){$('status').textContent=text;}
+async function api(action,body){
+ const response=await fetch('/api/'+action,{method:'POST',headers:{'Content-Type':'application/json','X-Editor-Token':'__TOKEN__'},body:JSON.stringify(body)});
+ const result=await response.json(); if(!response.ok)throw Error(result.error); return result;
+}
+async function run(work){
+ if(busy)return; busy=true; document.querySelectorAll('button').forEach(b=>b.disabled=true);
+ try{await work();}catch(error){status(error.message);}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}
+}
+function canLeave(){return !dirty || confirm('저장하지 않은 좌표 변경을 버리고 이동할까요?');}
+function snapshot(){return {roi:copy(model.roi),entrance:copy(model.entrance)};}
+function draw(){
+ if(!model||!picture)return;
+ ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(picture,0,0);
+ ctx.lineWidth=Math.max(2,canvas.width/600);
+ for(const [name,color] of [['roi','#50ff64'],['entrance','#53e5ff']]){
+  const [x1,y1,x2,y2]=model[name];ctx.strokeStyle=color;ctx.strokeRect(x1,y1,x2-x1,y2-y1);
+ }
+ if(selected>=0){
+  const [x1,y1,x2,y2]=model[selected<4?'roi':'entrance'];
+  const lines=[[x1,y1,x2,y1],[x1,y2,x2,y2],[x1,y1,x1,y2],[x2,y1,x2,y2]];
+  const [a,b,c,d]=lines[selected%4];ctx.strokeStyle='#ffdf48';ctx.lineWidth*=1.5;ctx.beginPath();ctx.moveTo(a,b);ctx.lineTo(c,d);ctx.stroke();
+ }
+ $('caption').textContent=`${model.video} · ${period.start} ~ ${period.end} · 프레임 ${model.frame} / ${model.total-1} (0부터 시작)`;
+ $('coords').textContent=`ROI [${model.roi.join(', ')}]  ENT [${model.entrance.join(', ')}] · ${selected<0?'Space로 경계 선택':(selected<4?'ROI':'ENT')+' '+names[selected%4]}${dirty?' · 미저장':''}`;
+}
+async function imageOf(data){const image=new Image();image.src=data.image;await image.decode();return image;}
+$('period').onsubmit=event=>{event.preventDefault();if(busy||!canLeave())return;run(async()=>{
+ const input={device:$('device').value,start:$('start').value,end:$('end').value};
+ status('영상 목록을 찾는 중…');const result=await api('list',input);
+ period={device:result.device,start:result.start,end:result.end};model=null;picture=null;dirty=false;
+ $('editor').hidden=true;$('videos').replaceChildren(...result.videos.map(name=>new Option(name,name)));
+ $('picker').hidden=!result.videos.length;status(`${result.videos.length}개 영상. 대표 영상 하나를 선택하세요.`);
+});};
+$('picker').onsubmit=event=>{event.preventDefault();if(busy||!canLeave())return;run(async()=>{
+ const video=$('videos').value;status('프레임을 읽는 중…');
+ const data=await api('open',{...period,video});const image=await imageOf(data);
+ model={...data,video};picture=image;baseline=snapshot();dirty=false;selected=-1;
+ canvas.width=data.width;canvas.height=data.height;$('editor').hidden=false;draw();canvas.focus();status('Space로 편집할 경계선을 선택하세요.');
+});};
+function move(key,step){
+ if(selected<0){status('Space로 경계선을 먼저 선택하세요.');return;}
+ const edge=selected%4, vertical=edge<2;
+ if(vertical?!['ArrowUp','ArrowDown'].includes(key):!['ArrowLeft','ArrowRight'].includes(key))return;
+ const box=model[selected<4?'roi':'entrance'],index=[1,3,0,2][edge],old=box[index];
+ box[index]+=step*(['ArrowUp','ArrowLeft'].includes(key)?-1:1);
+ const r=model.roi,e=model.entrance;
+ if(!(r[0]>=0&&r[1]>=0&&r[2]<=model.width&&r[3]<=model.height&&r[0]<=e[0]&&r[1]<=e[1]&&e[2]<=r[2]&&e[3]<=r[3]&&e[0]<e[2]&&e[1]<e[3])){
+  box[index]=old;status('ENT는 ROI 안에, ROI는 영상 안에 있어야 합니다.');return;
+ }
+ dirty=JSON.stringify(snapshot())!==JSON.stringify(baseline);draw();status('편집 중 — Enter로 저장');
+}
+function navigate(direction){if(!model)return;run(async()=>{
+ const step=Number($('step').value);if(!Number.isSafeInteger(step)||step<1)throw Error('이동 간격은 양의 정수로 입력하세요.');
+ const target=Math.max(0,Math.min(model.total-1,model.frame+direction*step));if(target===model.frame)return;
+ status('프레임을 읽는 중…');const data=await api('frame',{...period,video:model.video,frame:target});
+ const image=await imageOf(data);if(data.width!==model.width||data.height!==model.height)throw Error('프레임 해상도가 바뀌었습니다.');
+ picture=image;model.frame=data.frame;draw();canvas.focus();status('프레임 이동 완료 — 좌표는 유지됩니다.');
+});}
+function save(){if(!model)return;run(async()=>{
+ status('저장 중…');const result=await api('save',{...period,video:model.video,frame:model.frame,roi:model.roi,entrance:model.entrance,image_size:[model.width,model.height]});
+ baseline=snapshot();dirty=false;selected=-1;draw();canvas.focus();status(result.message);
+});}
+canvas.onkeydown=event=>{
+ if(event.ctrlKey||event.metaKey||event.altKey)return;
+ if(![' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','n','b','Enter','Escape'].includes(event.key))return;
+ event.preventDefault();if(busy||!model)return;
+ if(event.key===' '){selected=(selected+1)%8;draw();}
+ else if(event.key.startsWith('Arrow'))move(event.key,event.shiftKey?10:1);
+ else if(event.key==='n'||event.key==='b')navigate(event.key==='n'?1:-1);
+ else if(event.key==='Enter')save();
+ else if(event.key==='Escape'){Object.assign(model,copy(baseline));dirty=false;selected=-1;draw();status('편집 시작 또는 마지막 저장 시점의 좌표로 복원했습니다.');}
+};
+$('previous').onclick=()=>navigate(-1);$('next').onclick=()=>navigate(1);$('save').onclick=save;
+window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
+</script>
+</html>

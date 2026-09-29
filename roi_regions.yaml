@@ -1,0 +1,210 @@
+version: 1
+regions:
+- device: ANU-25-summer-1
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [411, 980, 1640, 1232]
+  entrance: [537, 1095, 1589, 1200]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-1_20260701_100000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-10
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [828, 985, 1620, 1232]
+  entrance: [992, 1077, 1499, 1178]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-10_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-11
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [841, 848, 1609, 1151]
+  entrance: [986, 962, 1499, 1058]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-11_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-12
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-09 23:59:59'
+  roi: [909, 1004, 1621, 1231]
+  entrance: [1019, 1104, 1531, 1179]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-12_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-12
+  start: '2026-08-11 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [944, 958, 1640, 1205]
+  entrance: [1077, 1041, 1569, 1122]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-12_20260811_060000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-13
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-09 23:59:59'
+  roi: [186, 1006, 1610, 1232]
+  entrance: [322, 1136, 1522, 1219]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-13_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-13
+  start: '2026-08-11 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [190, 903, 1610, 1225]
+  entrance: [331, 1039, 1480, 1120]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-13_20260811_070000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-14
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-09 23:59:59'
+  roi: [0, 980, 1620, 1232]
+  entrance: [14, 1107, 1518, 1197]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-14_20260701_100000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-14
+  start: '2026-08-11 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [0, 959, 1602, 1232]
+  entrance: [10, 1048, 1480, 1138]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-14_20260811_060000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-15
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [831, 1010, 1545, 1232]
+  entrance: [964, 1096, 1434, 1184]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-15_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-16
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-09 23:59:59'
+  roi: [820, 1025, 1541, 1232]
+  entrance: [941, 1133, 1421, 1210]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-16_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-16
+  start: '2026-08-11 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [807, 987, 1580, 1232]
+  entrance: [935, 1077, 1449, 1163]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-16_20260811_060000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-17
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [311, 987, 1569, 1232]
+  entrance: [405, 1114, 1434, 1199]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-17_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-18
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-09 23:59:59'
+  roi: [739, 1011, 1484, 1232]
+  entrance: [875, 1114, 1359, 1199]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-18_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-18
+  start: '2026-08-11 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [730, 988, 1510, 1230]
+  entrance: [880, 1089, 1360, 1166]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-18_20260811_060000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-19
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [419, 1005, 1599, 1232]
+  entrance: [536, 1104, 1511, 1189]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-19_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-2
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [306, 879, 1540, 1200]
+  entrance: [383, 950, 1422, 1130]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-2_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-20
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [784, 980, 1611, 1232]
+  entrance: [980, 1089, 1457, 1186]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-20_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-3
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [269, 920, 1504, 1180]
+  entrance: [345, 1010, 1384, 1120]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-3_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-4
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [346, 977, 1618, 1232]
+  entrance: [427, 1058, 1488, 1177]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-4_20260701_100000.mp4
+  reference_frame: 36
+- device: ANU-25-summer-5
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [130, 883, 1510, 1211]
+  entrance: [312, 1016, 1308, 1117]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-5_20260811_100000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-6
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [355, 970, 1591, 1230]
+  entrance: [487, 1053, 1469, 1155]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-6_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-7
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [748, 980, 1533, 1230]
+  entrance: [891, 1083, 1406, 1192]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-7_20260701_090000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-8
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-09 23:59:59'
+  roi: [356, 997, 1613, 1232]
+  entrance: [476, 1124, 1505, 1206]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-8_20260701_100000.mp4
+  reference_frame: 0
+- device: ANU-25-summer-8
+  start: '2026-08-11 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [354, 980, 1615, 1232]
+  entrance: [463, 1099, 1483, 1176]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-8_20260811_080000.mp4
+  reference_frame: 130
+- device: ANU-25-summer-9
+  start: '2026-07-01 00:00:00'
+  end: '2026-08-31 23:59:59'
+  roi: [385, 960, 1621, 1231]
+  entrance: [529, 1058, 1534, 1151]
+  image_size: [1640, 1232]
+  reference_video: ANU-25-summer-9_20260701_090000.mp4
+  reference_frame: 0
