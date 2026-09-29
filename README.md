@@ -320,6 +320,87 @@ uv run python -m src.detect_scene_changes --device ANU-25-summer-3 --no-cache
 기본 샘플 수와 분석 해상도는 그대로 유지합니다. 이를 줄이면 빨라질 수 있지만
 벌을 배제하는 효과와 작은 구도 변화의 감지 성능이 달라질 수 있습니다.
 
+## 기기별 타임랩스 만들기
+
+한 기기의 영상을 촬영 일시 순서대로 연결하고, 기본적으로 각 영상의 **앞 24프레임을
+연속으로 추출**합니다(`--sampling first`). 영상의 뒤쪽은 읽지 않으므로 구도 확인용
+타임랩스를 빠르게 만들 수 있습니다. 기본 출력은 24 FPS이므로 **입력 영상 하나가 출력 영상의 1초**가 됩니다.
+없는 시각은 건너뛰고 실제 존재하는 영상만 연결합니다.
+
+```bash
+uv run python -m src.make_timelapse --device ANU-25-summer-3 --start-date 2026-07-01 --end-date 2026-07-05 --output bee_count_output/timelapse/device3_july.mp4
+
+# 시·분·초까지 범위 지정
+uv run python -m src.make_timelapse --device ANU-25-summer-3 --start-datetime "2026-07-05 06:00" --end-datetime "2026-07-05 18:00" --output bee_count_output/timelapse/device3_july05.mp4
+
+# 영상 2개를 동시에 추출 (출력은 촬영 순서 유지)
+uv run python -m src.make_timelapse --device ANU-25-summer-3 --start-date 2026-07-01 --end-date 2026-07-05 --workers 2
+
+# 예전처럼 원본 전체를 고르게 샘플링하려면 명시적으로 uniform 선택
+uv run python -m src.make_timelapse --device ANU-25-summer-3 --start-date 2026-07-01 --end-date 2026-07-05 --sampling uniform
+```
+
+좌측 상단에 `YYYY-MM-DD HH:MM:SS`와 기기명을 표시합니다. 캡션의 일시는
+**파일명에 기록된 영상 시작 시각 + 추출 프레임 번호 / 원본 FPS**로 추정합니다.
+카메라 시계나 파일명이 실제 촬영 시각과 다르면 캡션도 그 오차를 따릅니다.
+원본 FPS를 알 수 없으면 파일명의 시각과 `video start; FPS unknown`을 표시합니다.
+선택 기간은 파일명의 영상 시작 시각 기준(양끝 포함)이며, 선택한 영상 내부를
+기간 끝에 맞춰 자르지는 않습니다. 날짜만 지정하면 종료일 하루 전체를 포함합니다.
+
+주요 옵션:
+
+- `--device`: 필수, 예: `ANU-25-summer-3`
+- `--video-dir`: 원본 폴더, 기본 `videos`
+- `--frames-per-video`: 영상당 출력 프레임 수, 기본 24
+- `--sampling first|uniform`: 앞부분 연속 추출(기본) 또는 원본 전체 균등 추출. 모든 backend에 적용
+- `--workers`: 동시에 프레임을 추출할 영상 수, 기본 1. 2 또는 4로 비교 가능
+- `--fps`: 출력 FPS, 기본 24. 예를 들어 12로 지정하면 영상당 2초
+- `--max-width`: 분석이 아닌 출력 이미지 최대 너비, 기본 1280
+- `--output`: MP4 경로. 생략하면 `bee_count_output/timelapse/기기명_시작일시_종료일시.mp4`
+
+첫 읽기 가능한 프레임의 비율로 출력 크기를 정하고, 다른 비율의 영상은 검은 여백을
+추가해 원본 비율을 유지합니다. 오디오 없는 MP4와 같은 이름의 CSV를 생성합니다.
+CSV에는 원본 영상, 출력 시작 위치, 프레임 수, 캡션 시각, 읽기 실패 여부를 기록합니다.
+짧거나 일부 프레임을 읽지 못한 영상은 읽힌 프레임을 반복하여 영상당 출력 길이를
+유지합니다. 전혀 읽지 못한 영상은 건너뛰고 콘솔과 CSV에 기록합니다.
+최종 출력은 성공적으로 작성된 뒤 기존 출력 파일을 교체합니다.
+병렬화는 프레임 추출에만 적용하며 캡션과 인코딩은 촬영 순서대로 진행합니다.
+캐시는 사용하지 않습니다. 준비 중인 영상 수를 `--workers`로 제한하지만,
+영상당 24장의 컬러 이미지를 보관하므로 작업 수에 따라 메모리 사용량도 증가합니다.
+디스크 대역폭이나 디코더 CPU가 포화되면 작업 수를 늘려도 빨라지지 않을 수 있습니다.
+
+### NVIDIA GPU에서 타임랩스 추출
+
+Ubuntu의 NVIDIA GPU 환경에서는 `--backend cuda`로 FFmpeg의 하드웨어 디코딩과
+`scale_cuda` 축소를 사용할 수 있습니다. 기존 CPU 방식은 `--backend opencv`가
+기본입니다. 실행 환경에 정상 NVIDIA 드라이버와 CUDA 디코딩/`scale_cuda`를 지원하는
+`ffmpeg`, `ffprobe` 실행 파일이 필요합니다. 먼저 `nvidia-smi`가 정상 동작해야 합니다.
+
+```bash
+uv run python -m src.make_timelapse --device ANU-25-summer-3 --start-date 2026-07-01 --end-date 2026-07-05 --backend cuda --workers 2 --output bee_count_output/timelapse/device3_gpu.mp4
+```
+
+`--gpu-device 0`이 기본 GPU이며 여러 GPU가 있으면 번호를 바꿀 수 있습니다.
+GPU를 초기화하지 못하면 시작 단계에서 오류를 출력합니다. CPU로 자동 전환하지
+않으며, 영상별 디코딩 오류는 CSV에 기록합니다. CSV의 `backend`로 실행 경로를
+확인할 수 있습니다. GPU 경로는 8/10비트 YUV 4:2:0 입력을 지원하도록 구성했습니다.
+지원하지 않는 픽셀 형식이나 프레임 수/FPS 메타데이터가 없는 영상은 CPU 경로를
+사용해야 합니다. 캡션과 최종 MP4 인코딩은 CPU에서 실행합니다.
+
+이 경로는 원본을 순차 디코딩하며, 선택한 프레임만 GPU에서 축소하고 CPU로 전달합니다.
+기본 `--sampling first`는 앞 24프레임을 출력한 뒤 종료하며 전체 영상을 읽지 않습니다.
+`--sampling uniform`은 마지막 샘플까지 원본 전체를 순차 디코딩합니다.
+따라서 실제 속도는 원본 길이, 코덱, 디스크와 GPU 상태에
+따라 달라지며 무조건 빨라지는 것은 아닙니다. 같은 기간으로 CPU/GPU 실행 시간을
+비교하세요. `--backend ffmpeg`는 GPU 없이 같은 순차 추출 방식을 시험하는 옵션입니다.
+모든 경로는 기본적으로 영상당 24프레임을 만들지만 축소 알고리즘과 디코더 차이로
+픽셀이 완전히 같지는 않을 수 있습니다. GPU 경로는 회전 메타데이터를 적용하지 않습니다.
+
+현재 개발 세션에서는 CUDA 초기화가 `CUDA_ERROR_NO_DEVICE`로 실패하여 RTX 3080
+실행 속도와 실제 CUDA 필터 실행은 검증하지 못했습니다. CPU FFmpeg 추출, 프레임
+선택/시각, CUDA 명령 구성과 GPU 사용 불가 처리에 대한 테스트를 수행했습니다.
+구현 참고: [NVIDIA의 FFmpeg 가속 문서](https://docs.nvidia.com/video-technologies/video-codec-sdk/13.1/ffmpeg-with-nvidia-gpu/index.html).
+
 ## 산출물
 
 ### 입구 자동 탐색 실험
