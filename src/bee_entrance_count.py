@@ -50,6 +50,8 @@ class Config:
     epsilon: float = 1e-6
 
 
+MAX_PROCESS_FRAMES = 2880
+
 FARNEBACK_PARAMS = dict(
     pyr_scale=0.5,
     levels=4,
@@ -507,7 +509,7 @@ def process_video(video_path, output_dir, config):
 
     while True:
         # For testing, limit to first 2 minutes (assuming 24 fps -> 2880 frames)
-        if frame_idx >= 2880: 
+        if frame_idx >= MAX_PROCESS_FRAMES:
             break
 
         ret, frame = cap.read()
@@ -595,6 +597,20 @@ def process_video(video_path, output_dir, config):
     window_df = aggregate_window_counts(frame_df, config)
     window_df.to_csv(window_csv, index=False)
 
+    summary = summarize_result(video_path, output_dir, config, frame_df, window_df,
+                               roi_rect, entrance_rect, preprocessing_time_sec, optical_flow_time_sec)
+    return summary, frame_df, window_df
+
+
+def summarize_result(video_path, output_dir, config, frame_df, window_df,
+                     roi_rect, entrance_rect, preprocessing_time_sec=float('nan'),
+                     optical_flow_time_sec=float('nan')):
+    video_path, output_dir = Path(video_path), Path(output_dir)
+    stem = video_path.stem
+    preview_path = output_dir / f"{stem}_preview.mp4"
+    frame_csv = output_dir / f"{stem}_frame_flux.csv"
+    window_csv = output_dir / f"{stem}_window_3sec.csv"
+    last_time_sec = float(frame_df['time_sec'].iloc[-1])
     total_raw_in_flux = float(frame_df["raw_in_flux"].sum())
     total_raw_out_flux = float(frame_df["raw_out_flux"].sum())
     total_filtered_in_flux = float(frame_df["filtered_in_flux"].sum())
@@ -607,7 +623,7 @@ def process_video(video_path, output_dir, config):
         total_filtered_traffic_flux,
         config.epsilon,
     )
-    processed_frame_pairs = len(frame_rows)
+    processed_frame_pairs = len(frame_df)
     preprocessing_time_per_pair_sec = preprocessing_time_sec / max(
         processed_frame_pairs,
         1,
@@ -672,7 +688,7 @@ def process_video(video_path, output_dir, config):
         "preview_video": str(preview_path),
         "frame_csv": str(frame_csv),
         "window_csv": str(window_csv),
-    }, frame_df, window_df
+    }
 
 
 def compare_videos(video_paths, output_dir, config, config_for_video=None):

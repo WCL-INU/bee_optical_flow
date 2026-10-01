@@ -1,9 +1,20 @@
 import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import replace
+from multiprocessing import get_context
 from pathlib import Path
 
 import pandas as pd
+
+try:
+    from src.batch_results import process_or_reuse
+except ModuleNotFoundError:
+    from batch_results import process_or_reuse
+
+try:
+    from src.roi_batch import filter_recordings, normalize_device, parse_boundary, resolve_regions, save_skipped_report
+except ModuleNotFoundError:
+    from roi_batch import filter_recordings, normalize_device, parse_boundary, resolve_regions, save_skipped_report
 
 try:
     from src.bee_entrance_count import (
@@ -297,7 +308,11 @@ def select_videos(args):
     if args.videos:
         videos = parse_video_list(args.videos)
     else:
-        videos = discover_videos(args.video_dir, args.pattern)
+        filtered = args.roi_yaml or args.devices or args.period_start or args.period_end
+        videos = discover_videos(args.video_dir, args.pattern or ('*.mp4' if filtered else DEFAULT_PATTERN))
+
+    if args.devices or args.period_start or args.period_end:
+        videos = filter_recordings(videos, args.devices, args.period_start, args.period_end)
 
     if args.start is not None or args.end is not None:
         start = args.start or 0
@@ -311,13 +326,6 @@ def select_videos(args):
         raise RuntimeError(
             "No videos selected. Check --video-dir, --pattern, or --videos."
         )
-
-    preview_path = [
-        make_run_dir(args) / f"{stem}_preview.mp4"
-        for stem in [video.stem for video in videos]
-    ]
-
-    videos = [video for video, preview in zip(videos, preview_path) if not preview.exists()]
 
     missing = [video for video in videos if not video.exists()]
     if missing:
@@ -378,6 +386,10 @@ def find_coordinate_preset(video_path):
 
 def resolve_config_for_video(video_path, base_config, args):
     config = base_config
+
+    if getattr(args, 'roi_yaml', None):
+        record = args.region_records[str(video_path)]
+        return apply_coordinate_rects(config, record['roi'], record['entrance'])
 
     if args.coordinate_preset == COORDINATE_AUTO:
         preset_name = find_coordinate_preset(video_path)
@@ -571,7 +583,10 @@ def print_plan(videos, config, output_dir, mode, args):
     for idx, video in enumerate(videos, start=1):
         video_config = resolve_config_for_video(video, config, args)
         coordinate_note = args.coordinate_preset
-        if args.coordinate_preset == COORDINATE_AUTO:
+        if args.roi_yaml:
+            record = args.region_records[str(video)]
+            coordinate_note = f"{args.roi_yaml}: {record['start']} ~ {record['end']}"
+        elif args.coordinate_preset == COORDINATE_AUTO:
             coordinate_note = find_coordinate_preset(video) or COORDINATE_DEFAULT
         print(
             f"  {idx:02d}. {video} "
@@ -602,15 +617,15 @@ def _initialize_batch_worker():
     cv2.setNumThreads(1)
 
 
-def _process_video_job(video, output_dir, video_config):
+def _process_video_job(video, output_dir, video_config, force=False):
     """Process-pool entry point; kept at module scope so it is picklable."""
-    result, _, _ = process_video(video, output_dir, video_config)
-    return result
+    return process_or_reuse(video, output_dir, video_config, process_video, force)
 
 
 def run_batch(videos, output_dir, config, args):
     output_dir.mkdir(parents=True, exist_ok=True)
     workers = getattr(args, "workers", 1)
+    force = getattr(args, 'force', False)
     if workers < 1:
         raise ValueError("--workers must be at least 1.")
 
@@ -623,7 +638,7 @@ def run_batch(videos, output_dir, config, args):
         summaries = []
         for idx, (video, video_config) in enumerate(jobs, start=1):
             print(f"[{idx}/{len(jobs)}] Processing {video}")
-            summaries.append(_process_video_job(video, output_dir, video_config))
+            summaries.append(_process_video_job(video, output_dir, video_config, force))
     else:
         worker_count = min(workers, len(jobs))
         print(f"Processing {len(jobs)} videos with {worker_count} workers")
@@ -631,9 +646,10 @@ def run_batch(videos, output_dir, config, args):
         with ProcessPoolExecutor(
             max_workers=worker_count,
             initializer=_initialize_batch_worker,
+            mp_context=get_context('spawn'),
         ) as executor:
             futures = {
-                executor.submit(_process_video_job, video, output_dir, video_config): (
+                executor.submit(_process_video_job, video, output_dir, video_config, force): (
                     idx,
                     video,
                 )
@@ -652,6 +668,8 @@ def run_batch(videos, output_dir, config, args):
     timing_path = save_timing_summary(summaries, output_dir)
     print(f"batch summary: {summary_path}")
     print(f"timing summary: {timing_path}")
+    counts = summary_df['result_status'].value_counts().to_dict()
+    print(f"처리 결과: {counts} (result_status 열에 기록)")
     return summary_df
 
 
@@ -797,7 +815,7 @@ def run_groups(videos, output_dir, config, args, group_size, slide):
     return group_dirs
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Convenient runner for bee entrance optical-flow experiments."
     )
@@ -812,7 +830,15 @@ def parse_args():
         ),
     )
     parser.add_argument("--video-dir", type=Path, default=VIDEO_DIR)
-    parser.add_argument("--pattern", default=DEFAULT_PATTERN)
+    parser.add_argument("--pattern", help="Glob pattern; defaults to *.mp4 with period/device/YAML selection, otherwise the legacy July pattern.")
+    parser.add_argument("--roi-yaml", type=Path, help="ROI editor YAML; match coordinates by device and recording timestamp.")
+    parser.add_argument("--devices", "--device", nargs="+", help="Device names or numbers, e.g. --devices 8 12")
+    starts = parser.add_mutually_exclusive_group()
+    starts.add_argument("--start-date", dest="period_start")
+    starts.add_argument("--start-datetime", dest="period_start")
+    ends = parser.add_mutually_exclusive_group()
+    ends.add_argument("--end-date", dest="period_end")
+    ends.add_argument("--end-datetime", dest="period_end")
     parser.add_argument("--videos", nargs="+", type=Path)
     parser.add_argument("--start", type=int)
     parser.add_argument("--end", type=int)
@@ -820,6 +846,7 @@ def parse_args():
     parser.add_argument("--output-root", type=Path, default=OUTPUT_ROOT)
     parser.add_argument("--run-name")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument('--force', action='store_true', help='Recompute batch/tune results even when complete outputs exist.')
     parser.add_argument(
         "--workers",
         type=int,
@@ -889,7 +916,21 @@ def parse_args():
     parser.add_argument("--tune-grid", choices=sorted(TUNE_GRIDS), default="quick")
     parser.add_argument("--tune-preview-stride", type=int, default=999999)
     parser.add_argument("--reuse-existing", action="store_true")
-    return parser.parse_args()
+    args = parser.parse_args(argv)
+    try:
+        args.period_start = parse_boundary(args.period_start) if args.period_start else None
+        args.period_end = parse_boundary(args.period_end, True) if args.period_end else None
+        if args.period_start and args.period_end and args.period_start > args.period_end:
+            raise ValueError('종료 일시는 시작 일시보다 빠를 수 없습니다.')
+        if args.roi_yaml and (args.roi or args.entrance or args.coordinate_preset != COORDINATE_AUTO):
+            raise ValueError('--roi-yaml은 --roi, --entrance, 명시적 --coordinate-preset과 함께 사용할 수 없습니다.')
+        if args.roi_yaml and args.reuse_existing:
+            raise ValueError('--roi-yaml과 --reuse-existing은 함께 사용할 수 없습니다. YAML 좌표로 다시 계산해야 합니다.')
+        if args.devices:
+            args.devices = {normalize_device(device) for device in args.devices}
+    except ValueError as exc:
+        parser.error(str(exc))
+    return args
 
 
 def main():
@@ -917,6 +958,22 @@ def main():
         return
 
     videos = select_videos(args)
+    if not videos:
+        print('No videos left to process (existing previews).')
+        return
+    if args.roi_yaml:
+        if args.dry_run:
+            print('dry run: 파일명과 YAML만 검사합니다. 실제 영상 해상도·읽기 검사는 실행 시 수행합니다.')
+        args.region_records = resolve_regions(args.roi_yaml, videos, inspect_videos=not args.dry_run)
+        selected_count = len(videos)
+        if not args.dry_run:
+            skipped_report = save_skipped_report(output_dir, videos, args.region_records, args.roi_yaml)
+            print(f'건너뛴 영상 목록: {skipped_report}')
+        videos = [video for video in videos if str(video) in args.region_records]
+        print(f'YAML 좌표 검사: 분석 대상 {len(videos)}개, 좌표 없음으로 건너뜀 {selected_count - len(videos)}개')
+        if not videos:
+            print('분석 가능한 영상이 없어 종료합니다. 기존 분석 산출물은 변경하지 않았습니다.')
+            return
     print_plan(videos, config, output_dir, args.mode, args)
     if args.dry_run:
         print("dry run: no videos processed")
@@ -935,6 +992,9 @@ def main():
         run_tune(videos, output_dir, config, args)
     else:
         run_groups(videos, output_dir, config, args, args.group_size, args.slide)
+
+    if args.roi_yaml:
+        print(f'처리 완료: 좌표 없음으로 건너뜀 {selected_count - len(videos)}개. 목록: {skipped_report}')
 
 
 if __name__ == "__main__":
