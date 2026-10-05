@@ -17,6 +17,13 @@ T = HERE / "tables"
 F = HERE / "figures"
 REPORT_NAME = "optical_flow_jul_aug_analysis_report"
 s = json.loads((HERE / "summary.json").read_text())
+geo = json.loads((HERE / "geometry_summary.json").read_text())
+gd = pd.read_csv(T / "geometry_device_comparison.csv")
+gp = pd.read_csv(T / "geometry_periods.csv")
+gc = pd.read_csv(T / "geometry_changes.csv")
+gm = pd.read_csv(T / "geometry_month_groups.csv")
+meaning = json.loads((HERE / "normalization_review.json").read_text())
+meaning_cases = pd.read_csv(T / "normalization_review_cases.csv")
 d = pd.read_csv(T / "video_summary.csv", parse_dates=["date"])
 device = pd.read_csv(T / "device.csv")
 hour = pd.read_csv(T / "hour.csv")
@@ -122,12 +129,130 @@ candidate_rows = [
     ["persistence 후 후보 픽셀", number(s['frame_sum_persistent_candidate_pixels']), percent(s['persistence_pixel_retention']), percent(s['persistence_pixel_retention'])],
     ["면적 필터 후 후보 픽셀", number(s['frame_sum_filtered_candidate_pixels']), percent(s['area_pixel_retention']), percent(s['candidate_pixel_retention'])]]
 
+geometry_device_rows=[]
+for r in gd.itertuples(index=False):
+    p=gp[gp.device==r.device]
+    dimensions=" / ".join(f"{int(q.ent_width)}×{int(q.ent_height)}" for q in p.itertuples(index=False))
+    band=number(r.band_min) if r.band_min==r.band_max else f"{number(r.band_min)}–{number(r.band_max)}"
+    geometry_device_rows.append([r.device,dimensions,band,number(r.mean_density,3),number(r.median_density,3),r.raw_rank,r.density_rank])
+geometry_change_rows=[]
+for r in gc.itertuples(index=False):
+    geometry_change_rows.append([r.device,f"{number(r.old_band)} → {number(r.new_band)}",
+        f"{100*r.band_change:+.2f}%",number(r.center_shift,1),percent(r.band_iou,2),
+        f"{100*r.month_raw_change:+.1f}%",f"{100*r.month_density_change:+.1f}%"])
+group_names={"all_common_devices":"공통 19개 기기", "unchanged_devices":"좌표가 유지된 기기", "changed_devices":"좌표가 변경된 기기", "exact_same_geometry":"정확히 같은 좌표끼리 비교"}
+geometry_group_rows=[[group_names[r.group],r.devices,r.cells,number(r.rate_july/1000,1),number(r.rate_august/1000,1),
+    f"{100*r.rate_change:+.1f}%",f"{100*r.density_change:+.1f}%"] for r in gm.itertuples(index=False)]
+geometry_local_rows=[]
+for r in gc.itertuples(index=False):
+    a="해당 주 표본 없음" if r.local_common_hours==0 else f"{100*r.local_raw_change:+.1f}%"
+    b="—" if r.local_common_hours==0 else f"{100*r.local_density_change:+.1f}%"
+    geometry_local_rows.append([r.device,r.last_old_recording,r.first_new_recording,int(r.before_n),int(r.after_n),a,b])
+meaning_labels=['같은 패치 1개: 좁은 경계','같은 패치 1개: 넓은 경계','같은 패치 2개: 넓은 경계',
+                '국소 flow를 포함하는 경계','같은 면적의 경계를 이동하여 국소 flow 제외']
+meaning_rows=[[label,number(r.boundary_pixels),number(r.filtered_flux),number(r.density,6)]
+              for label,r in zip(meaning_labels,meaning_cases.itertuples(index=False))]
+
+geometry_device_section=f"""### 6.2 면적 정규화의 측정 의미 검토
+
+**면적 정규화를 실제 활동량의 보정으로 채택하지 않는다.** 현재 구현은 경계에서 검출된 움직임을 합산하므로, 움직임이 없는 픽셀을 더 포함한다고 flux가 그 면적에 비례해 커지는 구조가 아니다. 보고서의 주 지표는 기존 filtered flux이며, `flux/면적`은 측정 대상이 다른 공간 평균의 참고 통계로만 취급한다.
+
+영상 전체 filtered traffic flux를 F, 처리 시간을 T, 경계 띠 픽셀 수를 A라 두면, 코드의 출력은 `F = Σ프레임 Σ후보픽셀 abs(normal_flow)`이고 공간 평균은 `D = F / (T × A)`이다. **F에는 필터를 통과한 후보만 기여하지만 D의 분모 A에는 움직임이 없는 픽셀도 포함**된다. 따라서 F/T는 경계 전체의 누적 신호이고 D는 비활성 픽셀까지 포함한 전체 경계의 픽셀당 평균 신호이다.
+
+기존 목적은 입구 전체의 출입 활동을 나타내는 누적 신호를 얻는 것이었다. 넓은 입구에서 더 많은 움직임이 발생하는 차이를 A로 나누면 그 총량 차이가 사라질 수 있다. 반대로 같은 움직임을 유지하면서 비활성 경계만 길게 지정해도 D는 작아진다. **D의 순위 변화는 활동량이 더 정확하게 비교되었다는 증거가 아니라, 측정 대상이 바뀐 결과**이다. 기존 validation 회귀도 F를 입력으로 사용하므로 D의 보정 타당성을 검증한 자료가 아니다.
+
+### 6.3 같은 합산 규칙으로 확인한 개념 검증
+
+실제 코드의 경계 마스크, 강도 threshold, persistence 및 component 면적 필터를 사용해 두 조건을 독립적으로 바꾸었다. 첫째는 동일한 이동 패치를 유지하고 비활성 경계를 늘리는 조건, 둘째는 넓은 경계에 같은 이동 패치를 하나 더 추가하는 조건이다. **입력은 인위적으로 지정한 flow 벡터이며 실제 벌 영상이나 Farneback 성능의 검증 자료가 아니다.** 목적은 면적에 나누는 연산이 원래 합계의 의미를 항상 보존하는지 확인하는 것이다.
+
+{table(['합성 flow 조건','경계 픽셀 수 A','filtered flux 합계 F','D = F/(T×A)'],meaning_rows)}
+
+처음 세 사례의 처리 길이는 모두 2.125초이며, 이동 패치는 같은 크기·속도·경로를 가진다. 경계를 넓혀도 동일한 패치 1개의 flux는 **7,248로 동일**하지만 D는 **{percent(meaning['unchanged_passage_density_ratio'],2)}**로 낮아진다. 넓은 경계에서 패치가 2개로 늘면 F는 **2배**가 되지만 D는 좁은 경계의 패치 1개 사례 대비 **{percent(meaning['doubled_passages_density_ratio'],2)}**로 거의 같다. 총 이동 신호의 차이가 공간 평균에서 사라지는 구체적인 예이다.
+
+마지막 두 사례는 같은 0.8333초의 국소 flow 입력에 같은 크기의 경계를 적용한 결과이다. 경계 면적은 동일한 9,452픽셀인데 위치를 이동하자 F는 **9,728에서 0**으로 바뀐다. 즉 **면적 변화율이 0이어도 위치 선택만으로 큰 flux 변화가 가능**하다. 실제 기기에서도 작은 면적 변화만 보고 flux 변화의 기여분이 작다고 판단할 수 없다.
+
+{figure('11_normalization_meaning_review.png','그림 11. 합성 flow를 이용한 측정 의미 검토. 동일한 이동 패치의 누적량과 전체 경계 픽셀의 평균은 서로 다른 질문에 답한다.')}
+
+이 계산은 면적 정규화가 항상 의미를 보존한다는 가정의 반례이다. 실제 데이터에서 F/A와 count의 관계를 검증한 실험이나 새 calibration을 수행한 것은 아니므로, 기존 활동량 대신 D를 채택하지 않는다.
+
+### 6.4 공간 설정과 공간 평균의 참고 통계
+
+합산 영역은 ENT 사각형 내부 전체가 아니라 **네 변 주변의 counting boundary band**이다. 이 영역의 크기를 기술할 때는 실제 경계 띠의 픽셀 수 A를 계산한다. 정확한 A를 아는 것과 A를 나누는 활동량 보정이 타당한 것은 별개의 문제이다.
+
+저장된 완료 기록의 ROI/ENT 좌표를 영상별로 읽고, `build_entrance_mask()`와 `build_counting_boundary_band()`를 그대로 호출하여 A를 계산했다. 경계의 겹치는 모서리는 코드의 최근접 경계 배정에 따라 한 번씩 집계했다. 완료 기록이 있는 12,731개는 저장된 설정을 사용했고, 좌표 기록이 없는 957개는 파일명 시각에 해당하는 [roi_regions.yaml](roi_regions.yaml) 기간 좌표로 복원했다. 저장된 좌표와 현재 YAML의 일치는 확인했다.
+
+이 자료에는 **26개 ROI/ENT 조합**이 있다. A는 **{number(geo['boundary_min'])}–{number(geo['boundary_max'])}픽셀**, 최대/최소 비는 **{geo['area_ratio']:.2f}배**이다. 8·12·13·14·16·18번은 두 좌표 기간을 가지며, 나머지 14개 기기는 하나의 좌표 기간을 가진다.
+
+참고 통계 D의 단위는 `flux / (초·경계 픽셀)`이다. 아래 평균은 영상마다 해당 기간의 A로 나눈 후 평균했다. ENT 크기가 두 개이면 시간 순서로 나열했다. 두 정렬은 각각 경계 전체 신호와 공간 평균을 정렬한 것이며, 기기별 실제 출입량 순위로 해석하지 않는다.
+
+{table(['기기','ENT 너비×높이(px)','실제 경계 픽셀 수','D 평균(참고)','D 중앙값(참고)','F/T 정렬','D 정렬'],geometry_device_rows)}
+
+D가 높은 기기는 7·9·20번이며, 14번은 F/T 정렬에서 3번째, D 정렬에서 14번째이다. 이는 **픽셀 평균이 높은 경계와 누적 신호가 큰 경계가 다르다는 결과**이다. 14번의 활동량이 과대평가되어 순위를 바로잡았다는 결론으로 사용하지 않는다.
+
+D는 `프레임 쌍/초 × 후보 픽셀 점유율 × 후보 픽셀당 평균 법선 flow`로 분해된다. 움직임의 픽셀 점유 정도와 강도를 평균한 통계로 사용할 수 있으며, 물리적 입구 길이당 벌의 통과 수로 환산한 값은 아니다. 기기 간 물리적 규모와 신호-활동량의 관계를 추가로 검증하기 전에는 F/T와 D 어느 쪽도 실제 출입량의 공통 척도로 확정하지 않는다.
+
+{figure('08_geometry_normalized_devices.png','그림 8. 경계 전체의 누적 신호와 경계 픽셀의 평균 신호를 각각 정렬한 결과. 보정된 활동량 순위를 제시한 그림이 아니다.')}
+
+기기별 분석은 관측 flux와 공간 설정을 함께 기술하고, 동일한 좌표 기간 안의 시간 변화에 우선 근거한다. D는 보조 통계로 표시한다.
+"""
+
+geometry_month_section=f"""### 7.3 ENT 변경 시점과 flux 변화의 동반 여부
+
+[ROI/ENT YAML](roi_regions.yaml)에서 **8·12·13·14·16·18번은 8월 9일까지의 좌표와 8월 11일부터의 좌표가 구분**되어 있다. 완료 기록에서도 해당 좌표 변경이 확인된다. 8월 10일은 이 여섯 기기의 두 YAML 기간 사이에 있다.
+
+아래 면적 변화는 변경 전/후 마스크의 실제 A를 비교한 값이다. 이동 거리와 IoU는 **원본 영상의 픽셀 좌표계**에서 계산했다. 월별 변화율은 각 기기의 공통 17개 시각을 같은 비중으로 평균했다.
+
+{table(['기기','경계 픽셀 수: 전 → 후','A 변화','ENT 중심 이동(px)','경계 띠 IoU','월별 총 flux/초 변화','월별 D 변화(참고)'],geometry_change_rows)}
+
+실제 합산 영역의 크기는 8번 −1.26%, 12번 −2.39%, 13번 −4.14%, 14번 −2.14%, 16번 +7.75%, 18번 −2.12% 바뀌었다. ENT 내부 면적과는 다른 변화이다. 예를 들어 **12번의 ENT 내부 면적은 +3.78%이지만 경계 띠는 −2.39%**, **16번의 ENT 내부 면적은 +19.60%이지만 경계 띠는 +7.75%**이다. ENT 내부 면적으로 나누면 실제 flux 합산 영역 변화와 다른 보정이 된다.
+
+**16번은 합산 영역이 늘면서 관측 flux는 줄었다.** 총 flux/초는 −21.7%, D는 −27.3%이다. 이 두 수치의 차이는 나눗셈으로 발생한 차이이며, 넓어진 경계가 실제 감소를 가렸다는 근거로 쓰지 않는다. 13번과 14번의 F/T 증가율과 D 증가율의 차이도 같은 이유로, 면적의 인과 효과를 제거한 결과로 해석하지 않는다.
+
+ENT 중심은 **29.2–99.4픽셀 이동**했고, 원본 영상 좌표에서의 경계 띠 IoU는 **0–5.55%**이다. 면적 변화 외에 **어떤 영상 위치에서 신호를 합산했는지도 변경**되었다. 이 값은 서로 다른 촬영 영상에서 동일한 물리적 입구가 얼마나 겹치는지를 측정한 값이 아니라, 지정된 영상 좌표 마스크의 겹침이다.
+
+{figure('09_boundary_coordinate_changes.png','그림 9. 여섯 기기의 변경 전/후 실제 경계 띠를 원본 영상 좌표에 표시한 결과. 파랑은 변경 전, 주황은 변경 후이다.')}
+
+### 7.4 면적 비례 가정의 검토와 동일 좌표 비교
+
+실제 활동량을 복원하려는 보정식 `F/T × A기준/A현재`를 쓰려면, 적어도 다음 가정이 필요하다.
+
+- 추가·제외되는 경계 영역이 기존 영역과 같은 정도의 신호를 담아, 기대 flux가 면적에 비례한다.
+- 영역 변경이 서로 다른 출입 경로, 법선 방향 또는 이동 신호의 핵심 위치를 선택하는 변화가 아니다.
+- 영상의 픽셀 스케일과 필터가 통과시키는 신호의 관계도 같은 방식으로 유지된다.
+
+코드에는 flux와 A의 비례를 강제하는 규칙이 없고, 위 가정은 현재 저장 자료에서 검증되지 않았다. 기존 회귀는 F의 관계를 검증했으며 이 면적 보정식을 검증하지 않았다. 따라서 **7월 면적으로 환산한 −13.0%를 보정된 월별 활동량 결론으로 채택하지 않는다.**
+
+이미 계산한 −13.0%는 **면적 비례를 가정했을 때의 민감도 계산**으로 남긴다. 공통 323개 기기·시각에 이 식을 적용하면 7월 {number(geo['july_reference_area_july_rate']/1000,1)}천, 8월 {number(geo['july_reference_area_august_rate']/1000,1)}천이라는 가상 기준 면적의 값이 나온다. 원래 F/T 변화 −13.4%와 약 0.4%p 차이가 있다는 것은 이 가정식의 수치적 영향이며, 실제 영역 변경의 기여분을 측정한 결과가 아니다.
+
+{table(['비교 대상','기기 수','공통 조합 수','7월: 천 flux/초','8월: 천 flux/초','관측 F/T 변화','D 변화(참고)'],geometry_group_rows)}
+
+추가적인 면적 비례 가정 없이 비교할 수 있는 자료는 **좌표가 유지된 13개 기기**와 **정확히 같은 좌표 기간의 관측끼리 묶은 조합**이다. 전자에서는 같은 시각 평균 F/T가 **19.0% 감소**, 후자의 16개 기기·272개 조합에서는 **15.8% 감소**한다. 이것은 같은 설정 경계에서 출력된 flux가 월 사이에 낮아지는 패턴이 있다는 관측 사실이다. 영역이 바뀐 다른 기기의 반사실적 flux를 복원한 수치는 아니다.
+
+전체 공통 기기의 D 평균 변화 **−20.9%**는 공간 평균이라는 다른 지표의 변화이고, 기기별 A를 나누면서 집계 비중도 달라진다. 좌표가 바뀐 여섯 기기의 F/T 평균 변화 +0.1%와 D 평균 변화 −10.7%도 서로 다른 통계이다. 이 차이를 통해 실제 출입 활동량의 감소가 정정되었다고 결론 내리지 않는다.
+
+### 7.5 변경 시점 부근의 관측 비교
+
+변경 직전 달력주 **8월 3–9일**과 직후 달력주 **8월 11–17일**에서 각 기기의 공통 시각 평균을 비교했다. 아래 기록 날짜는 결과 디렉토리에서 확인되는 구좌표의 마지막 날짜와 신좌표의 첫 날짜이다.
+
+{table(['기기','구좌표 마지막 관측','신좌표 첫 관측','직전 주 영상 수','직후 주 영상 수','근접 기간 총 flux/초 변화','근접 기간 D 변화'],geometry_local_rows)}
+
+양쪽 달력주가 모두 관측된 **12·14·18번**은 각각 총 flux/초가 **−12.5%, +3.9%, −30.6%** 변했다. D 변화 −10.3%, +6.2%, −29.1%는 참고 통계이다. 이 세 기기에서는 좌표 기간 변경과 flux 변화가 시간상 함께 관측된다. **면적 변화가 작다는 이유로 설정 변경의 영향도 작다고 결론 내리지 않는다.** 추가·제외된 영역이 어떤 움직임을 담는지가 알려져야 그 기여분을 계산할 수 있다.
+
+같은 두 달력주에서 관측된 **좌표가 유지된 9개 기기**의 공통 시각 평균도 총 flux/초가 **14.1%**, D가 **18.0% 감소**했다. 따라서 이 시기에는 ENT 변경 여부와 별개로 발생한 시간적 변화도 함께 나타난다.
+
+8·13·16번은 직전 달력주의 자료가 없어 8월 11일 부근의 즉각적인 변화량을 계산하지 않았다. 이 세 기기의 월별 비교는 각각 7월 22일·7월 7일·7월 28일까지의 구좌표 자료와 8월 11일부터의 신좌표 자료를 사용하므로, **자료 공백을 사이에 둔 기간 차이**이다.
+
+{figure('10_density_by_geometry_period.png','그림 10. 좌표가 변경된 여섯 기기의 픽셀 평균 신호 D 일평균(참고 통계). 점선은 8월 11일이며, 서로 다른 좌표 기간 사이는 연결하지 않았다.')}
+
+확인된 것은 **설정 영역과 flux 변화의 동반 관측**, **같은 좌표에서의 월별 flux 변화**이다. 영역 변경이 실제 신호에 미친 영향은 현재 합계 CSV로 분리할 수 없다. 이를 직접 측정하려면 동일 영상 구간에 두 설정을 적용해 결과를 비교하고, 같은 이동이 공통 물리 경계에서 어떻게 포착되는지를 확인해야 한다. 기존 관측 flux와 설정 변경 기록은 유지하고, 검증되지 않은 면적 보정은 조건부 계산으로만 남겼다.
+"""
+
 sections = []
 sections.append(f"""# 2026년 7–8월 벌통 입구 Optical Flow 결과 분석 보고서
 
 작성일: 2026-10-05  
 분석 대상: `bee_count_output/yaml_jul_aug_all`  
-분석 전제: 해당 디렉토리의 모든 결과는 동일한 연산 설정으로 생성된 비교 가능한 자료로 취급한다.
+분석 전제: optical-flow 및 필터 파라미터는 동일하며, ROI/ENT 좌표는 기기와 기간별 설정을 사용한다. 주 지표는 기존 filtered flux이다. 면적 정규화는 측정 의미를 검토한 뒤 공간 평균의 참고 통계로만 남겼다.
 
 ## 1. 주요 결과
 
@@ -137,7 +262,9 @@ sections.append(f"""# 2026년 7–8월 벌통 입구 Optical Flow 결과 분석 
 - filtered traffic flux의 총합은 **{s['total_filtered_flux']:.6e}**이며, raw flux의 **{percent(s['retention'],2)}**가 남았다. 영상별 평균 활동량은 **{number(d.rate.mean(),1)} flux/초**, 중앙값은 **{number(d.rate.median(),1)} flux/초**이다.
 - 전체 시간대 평균은 **{int(peak.hour)}시 {number(peak.mean_rate,1)} flux/초**로 가장 높다. 오전의 국소 정점은 **{int(am_peak.hour)}시**이고, 13–14시의 완만한 하락 후 16–18시에 다시 커지는 형태다.
 - 전체 IN 비중은 **{percent(s['in_share'],2)}**, OUT 비중은 **{percent(1-s['in_share'],2)}**이다. 영상별 IN/OUT flux의 Pearson 상관은 **{s['pearson_in_out']:.4f}**이다.
-- 같은 기기·같은 시각을 같은 비중으로 비교한 8월 평균은 7월보다 **{percent(-s['matched_change'])} 낮다**. 공통 기기 19개 중 6개는 증가했고 13개는 감소했다.
+- 실제 경계 띠 면적은 기기·기간에 따라 **{number(geo['boundary_min'])}–{number(geo['boundary_max'])}픽셀**로 다르지만, **flux가 그 면적에 비례한다는 가정은 검증되지 않았다**. `flux/면적`의 정렬을 보정된 활동량 순위로 해석하지 않는다.
+- 같은 기기·같은 시각의 관측 flux/초 평균은 8월에 **{percent(-s['matched_change'])} 감소**한다. 좌표가 유지된 13개 공통 기기에서도 **19.0% 감소**한다. 이는 관측된 flux의 변화이다.
+- **8·12·13·14·16·18번**은 8월 11일부터 좌표가 바뀐다. 실제 합산 영역 크기와 위치의 변화 및 flux 변화를 7.3–7.5절에서 함께 분석했다.
 - 양의 flux가 있는 영상에서 활동량과 3초 구간 변동계수의 Spearman 상관은 **{s['spearman_rate_cv_positive']:.3f}**이다. 활동량이 클수록 영상 안에서 flux가 지속되는 경향이 강하다.
 
 ## 2. 분석 자료와 지표
@@ -174,7 +301,7 @@ sections.append(f"""# 2026년 7–8월 벌통 입구 Optical Flow 결과 분석 
 
 각 후보 픽셀에서 `normal_flow = dx × normal_x + dy × normal_y`를 계산한다. 양의 성분을 IN, 음의 성분의 절댓값을 OUT으로 합산한다. Raw는 이미 boundary band와 flow 강도 조건을 통과한 신호이다. Persistence는 프레임 사이에 이어지는 후보를 남기며, 면적 필터는 그 뒤의 연결 성분을 정리한다. 최종 결과는 프레임별 신호와 3초 누적으로 저장된다.
 
-저장된 완료 기록에 기재된 연산값은 boundary band 8픽셀, magnitude 기준 1.0, normal-flow 기준 0.5, blur 5, persistence decay 0.65·threshold 1.3, 최소 component 면적 200픽셀이다. Farneback은 levels 4, winsize 21, iterations 3을 사용한다. 동일한 설정이라는 사용자 전제를 전체 분석에 적용했다.
+저장된 완료 기록에 기재된 연산값은 boundary band 8픽셀, magnitude 기준 1.0, normal-flow 기준 0.5, blur 5, persistence decay 0.65·threshold 1.3, 최소 component 면적 200픽셀이다. Farneback은 levels 4, winsize 21, iterations 3을 사용한다. 이 공통 파라미터와 별도로, ROI/ENT는 기기 및 기간별 좌표를 사용한다.
 
 이 과정에서 flux는 **경계 방향 움직임의 공간·시간 누적량**을 나타낸다. 이번 보고서의 방향성은 이 법선 투영의 IN/OUT 정의를 따른다.
 
@@ -194,7 +321,7 @@ sections.append(f"""# 2026년 7–8월 벌통 입구 Optical Flow 결과 분석 
 
 [2026-06-08 feature 분석 보고서](analysis/video_features/final/analysis_report.md)는 과거 검증 자료에서 frame difference, flow 크기, 방향 균형 등이 count 예측 오차와 연결됨을 보고했다. 낮은 flow에서의 과소예측 사례는 IN 279개, OUT 267개였고, `frame_diff_mean_p90`과 IN 과소예측 오차의 Pearson 상관은 0.758이었다. 방향 균형과 방향 분산도 관련 feature로 제시되었다.
 
-이 기존 결과는 신호의 **총량뿐 아니라 시간 변화와 방향 구조도 함께 읽는 이유**를 제공한다. 본 보고서에서는 현재 디렉토리에 저장된 flux와 후보 픽셀·component 통계만을 이용하여 그 두 측면을 분석했다.
+이 기존 결과는 신호의 **총량뿐 아니라 시간 변화와 방향 구조도 함께 읽는 이유**를 제공한다. 실측 분석에서는 현재 디렉토리에 저장된 flux와 후보 픽셀·component 통계를 사용했다. 별도로 6.3절의 합성 flow는 면적 정규화의 의미를 검토하는 개념 계산이며, 실측 자료와 섞어 집계하지 않았다.
 """)
 
 sections.append(f"""## 4. 전체 활동량의 분포
@@ -227,17 +354,21 @@ Filtered flux가 0인 영상은 **{number(s['zero_n'])}개({percent(s['zero_n']/
 
 ## 6. 기기별 활동 수준과 특징
 
-아래 활동량은 각 기기의 저장된 모든 시각을 포함한 평균이다. 정점 시각은 기기별 시간대 평균이 가장 큰 시각으로 정의했다.
+### 6.1 관측 경계 전체의 flux
+
+아래 활동량은 각 기기의 저장된 모든 시각을 포함한 **기존 관측 flux** 평균이다. 정점 시각은 기기별 시간대 평균이 가장 큰 시각으로 정의했다. 기기마다 합산 영역이 다르므로 이 정렬을 실제 출입량의 공통 순위로 확정하지 않는다. 6.2–6.3절에서 정규화의 의미를 먼저 검토하고, 6.4절에 다른 측정 대상인 픽셀 평균의 참고 통계를 제시한다.
 
 {table(['기기','영상 수','관측 날짜 수','평균: 천 flux/초','중앙값: 천 flux/초','평균 곡선 정점','0 비중','통과율'], device_rows)}
 
 {figure('02_device_profile.png','그림 3. 기기별 평균 활동량과 기기·시각별 활동량 지도.')}
 
-평균 활동량 상위 기기는 **9번 335.2천, 2번 298.1천, 14번 272.4천, 6번 235.3천 flux/초**이다. 9번과 2번은 중앙값도 각각 361.9천, 286.7천으로 높다. 높은 평균과 높은 중앙값이 함께 나타나므로 두 기기는 많은 관측에서 큰 flux가 지속되는 유형으로 볼 수 있다.
+관측 총 flux 평균이 높은 기기는 **9번 335.2천, 2번 298.1천, 14번 272.4천, 6번 235.3천 flux/초**이다. 9번과 2번은 중앙값도 각각 361.9천, 286.7천으로 높다. 이 수치는 해당 기기의 설정된 경계 전체에서 많은 관측에 걸쳐 큰 flux가 지속됨을 나타낸다.
 
 1번과 19번의 평균은 각각 36.2천, 26.0천 flux/초이다. 19번 중앙값은 1.4천으로 평균과 차이가 크다. 17번도 평균 69.8천에 비해 중앙값은 10.9천이다. 이들 결과는 **대표적인 낮은 신호 상태와 일부 큰 신호 상태가 섞인 활동 분포**를 보여준다.
 
 기기별 통과율은 19번 77.9%부터 7번 88.0%까지 분포한다. 높은 활동 수준의 기기와 낮은 활동 수준의 기기는 남는 신호의 비중도 서로 다르다. 기기의 특징을 표현할 때 평균 활동량, 중앙값, 0 비중, 통과율을 함께 읽으면 지속적인 활동과 간헐적인 활동을 구분하기 쉽다.
+
+{geometry_device_section}
 
 ## 7. 7월과 8월의 변화
 
@@ -258,11 +389,15 @@ Filtered flux가 0인 영상은 **{number(s['zero_n'])}개({percent(s['zero_n']/
 가능한 해석은 **8월의 전체적인 활동 감소와 기기별 증가가 동시에 존재한다**는 것이다. 월별 변화는 여러 입구에서 같은 크기로 나타나는 변화가 아니며, 기기별 경계 활동의 변화 폭과 방향이 다르다. 두 달의 공통 시각 곡선에서는 오후 정점이 계속 나타난다.
 
 공통 기기·시각의 곡선을 시각별로 비교하면 8월의 **12시는 {percent(shared_hour.loc[12,'august']/shared_hour.loc[12,'july']-1)} 증가**, **13시는 {percent(shared_hour.loc[13,'august']/shared_hour.loc[13,'july']-1)} 증가**한다. 17시는 **{percent(1-shared_hour.loc[17,'august']/shared_hour.loc[17,'july'])} 감소**한다. 전체 평균이 낮아진 가운데 정오 부근의 신호는 커졌으므로, 월별 변화에는 활동 규모의 감소와 하루 안의 활동 분포 변화가 함께 들어 있다.
+
+{geometry_month_section}
 """)
 
 sections.append(f"""## 8. 날짜별 활동 변화
 
 각 기기에서 05–21시의 17개 시각이 모두 있는 기기·일 **{number(s['complete_device_days'])}개**를 골라 일평균 활동량을 계산했다. 이를 해당 기기의 완전한 기기·일 활동량 중앙값으로 나누어 상대 활동량을 구하고, 같은 날짜의 기기들에서 중앙값을 취했다. 값 1은 각 기기의 관측 기간 중 대표적인 일평균 활동 수준을 뜻한다.
+
+본 절의 날짜 곡선은 관측 총 flux의 상대 변화이다. 그림 10의 D 곡선은 다른 지표인 공간 평균의 참고 통계이며, 이 곡선을 보정한 실제 활동량으로 취급하지 않는다.
 
 아래 표는 이 집계에서 10개 이상의 기기가 참여한 날짜 가운데 상대 활동량 상위/하위 각 4일이다.
 
@@ -347,10 +482,10 @@ Q1의 통과율은 **35.2%**, Q4는 **86.6%**이다. 양의 flux 영상의 활�
 1. **하루 안의 반복적인 활동 리듬:** 오전 상승 뒤 오후 16–18시에 강해지며 17시가 대표 정점이다. 기기별 상대 곡선에서도 같은 구조가 나타난다.
 2. **전체량이 함께 커지는 양방향 움직임:** IN과 OUT이 매우 높은 상관을 보이고, 대부분의 양의 flux 영상에서는 방향 비중이 50% 부근이다. 활동량 변화의 중심은 traffic 규모이다.
 3. **지속적인 고활동과 간헐적인 저활동:** 활동량이 높은 영상은 낮은 상대 변동성과 높은 필터 통과율을 가진다. 낮은 활동에서는 작은 수의 3초 구간에 신호가 집중되는 경우가 많다.
-4. **월별 감소와 기기별 차이의 공존:** 공통 기기·시각의 평균은 8월에 13.4% 감소했지만, 14번·6번·4번 등의 활동은 증가했다. 시간대 리듬과 기기별 장기 변화가 서로 다른 수준의 패턴으로 관측된다.
+4. **관측 flux의 월별 감소와 기기별 차이:** 공통 기기·시각의 평균 flux/초는 8월에 13.4% 감소했다. 같은 좌표에서의 비교에도 감소 패턴이 나타나며, 기기별 증가·감소는 서로 다르다. 면적 비례 가정의 −13.0%를 보정된 활동량 결론으로 채택하지 않는다.
 5. **필터가 남긴 신호의 특성:** 많은 작은 component와 약한 후보 픽셀이 제거되면서도 전체 flux의 84.7%가 유지된다. 필터 후에는 후보 픽셀당 평균 경계 방향 움직임이 더 크다.
 
-기존 검증 보고서가 제시한 **filtered flux와 출입 활동량의 양의 관계**를 바탕으로, 이번 결과는 입구 활동을 **규모·방향·지속성·시간대·기기별 변화**의 다섯 축에서 해석할 수 있다. 이 보고서의 해석은 동일한 설정으로 생성된 optical-flow 출력의 수치와 시간적 구조에 근거한다.
+**면적을 나누면 누적량에서 공간 평균으로 측정 대상이 바뀐다.** 검증되지 않은 면적 비례 가정으로 기기별 활동량 순위나 월별 활동량을 정정하지 않는다. 기본 결과는 기존 flux의 규모·방향·지속성·시간 구조로 기술한다. 기기 간에는 공간 설정 차이를 함께 기록하며, 시간 변화는 동일 기기·동일 좌표 기간의 비교를 우선한다. 좌표가 바뀐 기간의 flux 차이는 설정과 시간 변화가 함께 들어 있는 관측으로 남긴다.
 
 ## 부록. 산출물과 재현
 
@@ -370,12 +505,22 @@ Q1의 통과율은 **35.2%**, Q4는 **86.6%**이다. 양의 flux 영상의 활�
 | [distribution.csv]({link('tables/distribution.csv')}) / [activity_quartiles.csv]({link('tables/activity_quartiles.csv')}) | 지표 분위수 / 활동량 사분위 그룹 |
 | [top_videos.csv]({link('tables/top_videos.csv')}) / [top_windows.csv]({link('tables/top_windows.csv')}) | 큰 활동 영상 / 큰 3초 구간 |
 | [summary.json]({link('summary.json')}) | 전체 요약, 상관계수, 합계 대조 결과 |
-| [figures]({link('figures')}) | 보고서에 사용한 그림 7개 |
+| [geometry_periods.csv]({link('tables/geometry_periods.csv')}) | 기기·기간별 실제 ROI/ENT 좌표, 경계 픽셀 수, 각 변의 면적 |
+| [geometry_device_comparison.csv]({link('tables/geometry_device_comparison.csv')}) | 경계 전체 flux 및 픽셀 평균의 참고 정렬; 보정된 활동량 순위 아님 |
+| [geometry_changes.csv]({link('tables/geometry_changes.csv')}) | 좌표 변경, 마스크 면적·위치 변화, 월별·근접 기간 flux 변화 |
+| [geometry_month_groups.csv]({link('tables/geometry_month_groups.csv')}) | 동일 좌표 기기 및 변경 기기 그룹의 월별 비교 |
+| [geometry_july_reference_month_cells.csv]({link('tables/geometry_july_reference_month_cells.csv')}) | 면적 비례 가정하의 기준 면적 환산 시나리오; 검증된 보정 아님 |
+| [geometry_summary.json]({link('geometry_summary.json')}) | 공간 설정 확인 및 각 파생값의 해석 상태 |
+| [normalization_review_cases.csv]({link('tables/normalization_review_cases.csv')}) | 합성 flow로 계산한 측정 의미의 반례; 실측 자료와 별도 |
+| [normalization_review.json]({link('normalization_review.json')}) | 면적 정규화의 측정 의미 검토와 미검증 가정 |
+| [figures]({link('figures')}) | 보고서에 사용한 그림 11개 |
 
-재현 명령은 프로젝트 최상단에서 실행한다. 저장된 연산 결과를 집계하며 optical flow를 다시 계산하지 않는다.
+재현 명령은 프로젝트 최상단에서 실행한다. 원본 영상의 optical flow를 다시 계산하지 않는다. 처음 두 단계는 실측 결과의 집계이며, 세 번째 단계는 별도의 합성 flow 개념 계산이다.
 
 ```bash
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/analyze.py
+MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/analyze_geometry.py
+MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/review_normalization_meaning.py
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/write_report.py
 ```
 
@@ -462,4 +607,4 @@ tbody tr:nth-child(even){background:#f7f9fb}img{width:100%;height:auto;margin-to
 </style></head><body><main>""" + render(report) + "</main></body></html>"
 (ROOT / f"{REPORT_NAME}.html").write_text(document, encoding="utf-8")
 print(f"Wrote {REPORT_NAME}.md ({len(report):,} characters)")
-print(f"Wrote {REPORT_NAME}.html ({len(document):,} characters; seven embedded figures)")
+print(f"Wrote {REPORT_NAME}.html ({len(document):,} characters; eleven embedded figures)")

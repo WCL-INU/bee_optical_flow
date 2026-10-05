@@ -1,0 +1,14 @@
+{
+  "purpose": "conceptual counterexamples using imposed flow, not observations of real bees",
+  "status": "area_normalization_not_validated_as_activity_correction",
+  "assumptions_for_reference_area_scaling": [
+    "Expected flux per unit of included boundary area is exchangeable",
+    "Boundary changes primarily add or remove comparable signal-bearing area",
+    "Position, projection, pixel scale, and filter effects do not change the relationship"
+  ],
+  "unchanged_passage_flux_ratio": 1.0,
+  "unchanged_passage_density_ratio": 0.4982078853046595,
+  "doubled_passages_flux_ratio": 2.0,
+  "doubled_passages_density_ratio": 0.996415770609319,
+  "equal_area_translated_signal_flux_ratio": 0.0
+}

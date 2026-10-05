@@ -1,0 +1,6 @@
+case,imposed_passage_patches,boundary_pixels,raw_flux,filtered_flux,candidate_pixel_frames,rate,density,duration_sec
+same_passage_narrow_boundary,1.0,9452,9792.0,7248.0,3624,3410.823529411765,0.36085733489333105,2.125
+same_passage_wide_boundary,1.0,18972,9792.0,7248.0,3624,3410.823529411765,0.17978196971388177,2.125
+two_passages_wide_boundary,2.0,18972,19584.0,14496.0,7248,6821.64705882353,0.35956393942776355,2.125
+localized_signal_included,,9452,10240.0,9728.0,4864,11673.6,1.2350402031316123,0.8333333333333334
+localized_signal_excluded_same_area,,9452,0.0,0.0,0,0.0,0.0,0.8333333333333334
