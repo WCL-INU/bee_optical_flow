@@ -10,6 +10,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
+from report_assets import prepare_report_assets
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -24,6 +25,7 @@ gc = pd.read_csv(T / "geometry_changes.csv")
 gm = pd.read_csv(T / "geometry_month_groups.csv")
 meaning = json.loads((HERE / "normalization_review.json").read_text())
 meaning_cases = pd.read_csv(T / "normalization_review_cases.csv")
+coverage = json.loads((HERE / "batch_summary_coverage.json").read_text())
 d = pd.read_csv(T / "video_summary.csv", parse_dates=["date"])
 device = pd.read_csv(T / "device.csv")
 hour = pd.read_csv(T / "hour.csv")
@@ -489,10 +491,28 @@ Q1의 통과율은 **35.2%**, Q4는 **86.6%**이다. 양의 flux 영상의 활�
 
 ## 부록. 산출물과 재현
 
-원본 결과는 [분석 대상 디렉토리](bee_count_output/yaml_jul_aug_all)에 있다. 새로 만든 분석 자료는 [analysis/jul_aug_optical_flow](analysis/jul_aug_optical_flow)에 저장했다.
+원본 배치 요약과 제외 목록의 공유용 사본은 [원본 요약 자료](bee_count_output/yaml_jul_aug_all)에 있다. 분석 자료와 보고서에서 연결하는 엑셀·기존 문서·그림·설정의 사본은 [analysis/jul_aug_optical_flow](analysis/jul_aug_optical_flow)에 모았다. 보고서의 모든 내부 파일 링크는 이 디렉토리 안의 공유 자료를 가리킨다.
+
+### batch_summary 포함 여부와 엑셀 자료
+
+프로젝트 최상단에 작성한 [optical_flow_jul_aug_analysis_data.xlsx](optical_flow_jul_aug_analysis_data.xlsx)의 공유용 사본을 분석 디렉토리에도 저장했다. 원본 `batch_summary.csv`의 **{number(coverage['batch_rows'])}행, {coverage['selected_column_count']}개 컬럼**을 추출했다. 영상 파일명·경로·처리 시간·프레임 쌍 수, ROI/ENT 좌표·경계 띠 폭, raw/filtered IN·OUT·traffic flux 합계와 초당 평균, raw/filtered 비율, 프레임·3초 구간 CSV 경로를 수록했다. 영상명 중복과 핵심 flow 컬럼의 결측은 모두 0이다. 엑셀을 다시 열어 {number(coverage['verified_export_cells'])}개 셀을 원본과 대조했다.
+
+`videos` 디렉토리의 실제 7–8월 원본 파일명, 현재 ROI YAML의 기기·기간, `skipped_videos.csv`, 프레임·3초 구간 결과 파일 목록 및 배치 요약의 영상명을 대조한 결과는 다음과 같다.
+
+{table(['월', '원본 영상', 'YAML 포함 영상', 'batch_summary', '프레임 CSV', '3초 구간 CSV', '제외 기록', '미확인 원본'], [[r['month']] + [number(r[k]) for k in ['source_videos', 'yaml_eligible', 'batch_videos', 'frame_results', 'window_results', 'skipped_videos', 'unaccounted_videos']] for r in coverage['monthly']])}
+
+**optical flow를 추출한 {number(coverage['batch_rows'])}개 영상은 모두 `batch_summary.csv`에 존재한다.** 프레임 결과와 3초 구간 결과 각각의 영상명 집합도 배치 요약과 정확히 일치하며, 요약에 기록된 결과 CSV 경로가 모두 실제 파일과 연결된다. 원본 {number(coverage['source_videos'])}개 가운데 요약에 없는 {number(coverage['skipped_videos'])}개는 모두 **2026년 8월 10일의 8·12·13·14·16·18번 기기 영상**이다. 이날은 YAML 기간에 좌표 설정이 없으며, 80개 파일명이 기존 제외 기록과 정확히 일치한다. 따라서 처리 대상 중 요약 누락은 0개이고, 전체 원본 중 80개는 optical flow 미추출 영상이다.
+
+엑셀의 `Optical flow` 시트는 원본 측정값을 그대로 담고, `컬럼 설명`, `포함 여부 확인`, `월별 포함 현황`, `추출 제외 영상` 시트에 정의와 대조 결과를 담았다. 원본의 ROI/ENT 설정 공란 {number(coverage['geometry_blank_rows'])}행은 그대로 보존했다. 면적 정규화 값은 추가하지 않았으며, 기존 flux 환산값인 `count_est`와 전처리·연산 시간 및 공통 알고리즘 설정은 추출 컬럼에서 제외했다. `raw_to_filtered_reduction_ratio`는 **raw / max(filtered, 1e-6)** 배율로, 제거율(%)과 다르다.
+
+### 분석 산출물 목록
 
 | 산출물 | 내용 |
 | --- | --- |
+| [optical_flow_jul_aug_analysis_data.xlsx](optical_flow_jul_aug_analysis_data.xlsx) | 배치 요약의 영상·영역·optical flow 핵심 컬럼 및 포함 여부 확인 |
+| [batch_summary_coverage.json]({link('batch_summary_coverage.json')}) | 원본 CSV 해시, 파일 집합 대조, 월별 포함 현황, 엑셀 셀 대조 결과 |
+| [report_reference_manifest.json]({link('report_reference_manifest.json')}) | 공유용 참고 파일의 원본·사본 경로, 크기와 SHA-256 |
+| [batch_summary_coverage.csv]({link('tables/batch_summary_coverage.csv')}) | 원본 13,768개 영상별 배치·프레임·구간 결과·YAML·제외 기록 포함 여부 |
 | [video_summary.csv]({link('tables/video_summary.csv')}) | 13,688개 영상별 활동량·방향 균형·변동성 |
 | [frame_video_summary.csv]({link('tables/frame_video_summary.csv')}) | 전 프레임 후보 픽셀·component·flux 재집계 |
 | [device.csv]({link('tables/device.csv')}) / [hour.csv]({link('tables/hour.csv')}) | 기기별 / 시각별 요약 |
@@ -521,13 +541,14 @@ Q1의 통과율은 **35.2%**, Q4는 **86.6%**이다. 양의 flux 영상의 활�
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/analyze.py
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/analyze_geometry.py
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/review_normalization_meaning.py
+.venv/bin/python analysis/jul_aug_optical_flow/export_excel.py
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/write_report.py
 ```
 
-분석 스크립트는 기존 프로젝트의 NumPy·Pandas·Matplotlib를 사용한다. Spearman 상관은 결측 쌍을 제외한 뒤 평균 순위의 Pearson 상관으로 계산한다. 0 신호가 아닌 영상의 CV에는 40개 구간의 모집단 표준편차를 사용한다.
+분석 스크립트는 기존 프로젝트의 NumPy·Pandas·Matplotlib를 사용하며, 엑셀 작성은 OpenPyXL을 사용한다. Spearman 상관은 결측 쌍을 제외한 뒤 평균 순위의 Pearson 상관으로 계산한다. 0 신호가 아닌 영상의 CV에는 40개 구간의 모집단 표준편차를 사용한다.
 """)
 
-report = "\n\n".join(sections)
+report = prepare_report_assets("\n\n".join(sections))
 (ROOT / f"{REPORT_NAME}.md").write_text(report, encoding="utf-8")
 
 # A small renderer for the Markdown constructs used in this report. Images are

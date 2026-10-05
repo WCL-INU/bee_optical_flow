@@ -47,7 +47,7 @@
 
 ### 3.1 연산 방식
 
-기존 [README](README.md), [시스템 설명](docs/presentation.md), [persistence 문서](docs/bee_entrance_persistence_filter.md)와 핵심 구현 [bee_entrance_count.py](src/bee_entrance_count.py)에 따르면, 시스템은 ROI의 연속 영상에서 Farneback optical flow를 계산하고 입구 사각형의 네 경계 방향으로 flow를 투영한다.
+기존 [README](analysis/jul_aug_optical_flow/references/README.md), [시스템 설명](analysis/jul_aug_optical_flow/references/docs/presentation.md), [persistence 문서](analysis/jul_aug_optical_flow/references/docs/bee_entrance_persistence_filter.md)와 핵심 구현 [bee_entrance_count.py](analysis/jul_aug_optical_flow/references/src/bee_entrance_count.py)에 따르면, 시스템은 ROI의 연속 영상에서 Farneback optical flow를 계산하고 입구 사각형의 네 경계 방향으로 flow를 투영한다.
 
 각 후보 픽셀에서 `normal_flow = dx × normal_x + dy × normal_y`를 계산한다. 양의 성분을 IN, 음의 성분의 절댓값을 OUT으로 합산한다. Raw는 이미 boundary band와 flow 강도 조건을 통과한 신호이다. Persistence는 프레임 사이에 이어지는 후보를 남기며, 면적 필터는 그 뒤의 연결 성분을 정리한다. 최종 결과는 프레임별 신호와 3초 누적으로 저장된다.
 
@@ -68,7 +68,7 @@
 | 현재 validation/output 선형 모델 | IN | 3,822 | 0.8791 | 0.7728 | 13.18 | 22.13 |
 | 현재 validation/output 선형 모델 | OUT | 3,822 | 0.8650 | 0.7483 | 14.06 | 23.37 |
 
-자료: [초기 선형 회귀 보고서](validation/legacy/linear_regression_report.md), [legacy 회귀 통계](validation/legacy/linear_regression_stats.csv), [현재 회귀 비교 결과](validation/output/regression_model_comparison.csv).
+자료: [초기 선형 회귀 보고서](analysis/jul_aug_optical_flow/references/validation/legacy/linear_regression_report.md), [legacy 회귀 통계](analysis/jul_aug_optical_flow/references/validation/legacy/linear_regression_stats.csv), [현재 회귀 비교 결과](analysis/jul_aug_optical_flow/references/validation/output/regression_model_comparison.csv).
 
 현재 validation 출력의 선형식은 IN에서 `8.666068712e-6 × filtered_in_flux + 6.960286266`, OUT에서 `8.384146128e-6 × filtered_out_flux + 7.171417991`이다. 같은 자료의 flat-exponential 모델은 IN R² 0.7727, OUT R² 0.7481로, 선형 모델과 매우 가까운 적합 결과를 보였다.
 
@@ -76,7 +76,7 @@
 
 ### 3.3 기존 feature 보고서의 해석
 
-[2026-06-08 feature 분석 보고서](analysis/video_features/final/analysis_report.md)는 과거 검증 자료에서 frame difference, flow 크기, 방향 균형 등이 count 예측 오차와 연결됨을 보고했다. 낮은 flow에서의 과소예측 사례는 IN 279개, OUT 267개였고, `frame_diff_mean_p90`과 IN 과소예측 오차의 Pearson 상관은 0.758이었다. 방향 균형과 방향 분산도 관련 feature로 제시되었다.
+[2026-06-08 feature 분석 보고서](analysis/jul_aug_optical_flow/references/analysis/video_features/final/analysis_report.md)는 과거 검증 자료에서 frame difference, flow 크기, 방향 균형 등이 count 예측 오차와 연결됨을 보고했다. 낮은 flow에서의 과소예측 사례는 IN 279개, OUT 267개였고, `frame_diff_mean_p90`과 IN 과소예측 오차의 Pearson 상관은 0.758이었다. 방향 균형과 방향 분산도 관련 feature로 제시되었다.
 
 이 기존 결과는 신호의 **총량뿐 아니라 시간 변화와 방향 구조도 함께 읽는 이유**를 제공한다. 실측 분석에서는 현재 디렉토리에 저장된 flux와 후보 픽셀·component 통계를 사용했다. 별도로 6.3절의 합성 flow는 면적 정규화의 의미를 검토하는 개념 계산이며, 실측 자료와 섞어 집계하지 않았다.
 
@@ -212,7 +212,7 @@ Filtered flux가 0인 영상은 **2,355개(17.2%)**이다. 이 가운데 raw도 
 
 합산 영역은 ENT 사각형 내부 전체가 아니라 **네 변 주변의 counting boundary band**이다. 이 영역의 크기를 기술할 때는 실제 경계 띠의 픽셀 수 A를 계산한다. 정확한 A를 아는 것과 A를 나누는 활동량 보정이 타당한 것은 별개의 문제이다.
 
-저장된 완료 기록의 ROI/ENT 좌표를 영상별로 읽고, `build_entrance_mask()`와 `build_counting_boundary_band()`를 그대로 호출하여 A를 계산했다. 경계의 겹치는 모서리는 코드의 최근접 경계 배정에 따라 한 번씩 집계했다. 완료 기록이 있는 12,731개는 저장된 설정을 사용했고, 좌표 기록이 없는 957개는 파일명 시각에 해당하는 [roi_regions.yaml](roi_regions.yaml) 기간 좌표로 복원했다. 저장된 좌표와 현재 YAML의 일치는 확인했다.
+저장된 완료 기록의 ROI/ENT 좌표를 영상별로 읽고, `build_entrance_mask()`와 `build_counting_boundary_band()`를 그대로 호출하여 A를 계산했다. 경계의 겹치는 모서리는 코드의 최근접 경계 배정에 따라 한 번씩 집계했다. 완료 기록이 있는 12,731개는 저장된 설정을 사용했고, 좌표 기록이 없는 957개는 파일명 시각에 해당하는 [roi_regions.yaml](analysis/jul_aug_optical_flow/references/roi_regions.yaml) 기간 좌표로 복원했다. 저장된 좌표와 현재 YAML의 일치는 확인했다.
 
 이 자료에는 **26개 ROI/ENT 조합**이 있다. A는 **18,870–54,128픽셀**, 최대/최소 비는 **2.87배**이다. 8·12·13·14·16·18번은 두 좌표 기간을 가지며, 나머지 14개 기기는 하나의 좌표 기간을 가진다.
 
@@ -297,7 +297,7 @@ D는 `프레임 쌍/초 × 후보 픽셀 점유율 × 후보 픽셀당 평균 �
 
 ### 7.3 ENT 변경 시점과 flux 변화의 동반 여부
 
-[ROI/ENT YAML](roi_regions.yaml)에서 **8·12·13·14·16·18번은 8월 9일까지의 좌표와 8월 11일부터의 좌표가 구분**되어 있다. 완료 기록에서도 해당 좌표 변경이 확인된다. 8월 10일은 이 여섯 기기의 두 YAML 기간 사이에 있다.
+[ROI/ENT YAML](analysis/jul_aug_optical_flow/references/roi_regions.yaml)에서 **8·12·13·14·16·18번은 8월 9일까지의 좌표와 8월 11일부터의 좌표가 구분**되어 있다. 완료 기록에서도 해당 좌표 변경이 확인된다. 8월 10일은 이 여섯 기기의 두 YAML 기간 사이에 있다.
 
 아래 면적 변화는 변경 전/후 마스크의 실제 A를 비교한 값이다. 이동 거리와 IoU는 **원본 영상의 픽셀 좌표계**에서 계산했다. 월별 변화율은 각 기기의 공통 17개 시각을 같은 비중으로 평균했다.
 
@@ -501,10 +501,31 @@ Q1의 통과율은 **35.2%**, Q4는 **86.6%**이다. 양의 flux 영상의 활�
 
 ## 부록. 산출물과 재현
 
-원본 결과는 [분석 대상 디렉토리](bee_count_output/yaml_jul_aug_all)에 있다. 새로 만든 분석 자료는 [analysis/jul_aug_optical_flow](analysis/jul_aug_optical_flow)에 저장했다.
+원본 배치 요약과 제외 목록의 공유용 사본은 [원본 요약 자료](analysis/jul_aug_optical_flow/references/bee_count_output/yaml_jul_aug_all/index.html)에 있다. 분석 자료와 보고서에서 연결하는 엑셀·기존 문서·그림·설정의 사본은 [analysis/jul_aug_optical_flow](analysis/jul_aug_optical_flow/index.html)에 모았다. 보고서의 모든 내부 파일 링크는 이 디렉토리 안의 공유 자료를 가리킨다.
+
+### batch_summary 포함 여부와 엑셀 자료
+
+프로젝트 최상단에 작성한 [optical_flow_jul_aug_analysis_data.xlsx](analysis/jul_aug_optical_flow/optical_flow_jul_aug_analysis_data.xlsx)의 공유용 사본을 분석 디렉토리에도 저장했다. 원본 `batch_summary.csv`의 **13,688행, 28개 컬럼**을 추출했다. 영상 파일명·경로·처리 시간·프레임 쌍 수, ROI/ENT 좌표·경계 띠 폭, raw/filtered IN·OUT·traffic flux 합계와 초당 평균, raw/filtered 비율, 프레임·3초 구간 CSV 경로를 수록했다. 영상명 중복과 핵심 flow 컬럼의 결측은 모두 0이다. 엑셀을 다시 열어 383,264개 셀을 원본과 대조했다.
+
+`videos` 디렉토리의 실제 7–8월 원본 파일명, 현재 ROI YAML의 기기·기간, `skipped_videos.csv`, 프레임·3초 구간 결과 파일 목록 및 배치 요약의 영상명을 대조한 결과는 다음과 같다.
+
+| 월 | 원본 영상 | YAML 포함 영상 | batch_summary | 프레임 CSV | 3초 구간 CSV | 제외 기록 | 미확인 원본 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-07 | 7,726 | 7,726 | 7,726 | 7,726 | 7,726 | 0 | 0 |
+| 2026-08 | 6,042 | 5,962 | 5,962 | 5,962 | 5,962 | 80 | 0 |
+
+**optical flow를 추출한 13,688개 영상은 모두 `batch_summary.csv`에 존재한다.** 프레임 결과와 3초 구간 결과 각각의 영상명 집합도 배치 요약과 정확히 일치하며, 요약에 기록된 결과 CSV 경로가 모두 실제 파일과 연결된다. 원본 13,768개 가운데 요약에 없는 80개는 모두 **2026년 8월 10일의 8·12·13·14·16·18번 기기 영상**이다. 이날은 YAML 기간에 좌표 설정이 없으며, 80개 파일명이 기존 제외 기록과 정확히 일치한다. 따라서 처리 대상 중 요약 누락은 0개이고, 전체 원본 중 80개는 optical flow 미추출 영상이다.
+
+엑셀의 `Optical flow` 시트는 원본 측정값을 그대로 담고, `컬럼 설명`, `포함 여부 확인`, `월별 포함 현황`, `추출 제외 영상` 시트에 정의와 대조 결과를 담았다. 원본의 ROI/ENT 설정 공란 957행은 그대로 보존했다. 면적 정규화 값은 추가하지 않았으며, 기존 flux 환산값인 `count_est`와 전처리·연산 시간 및 공통 알고리즘 설정은 추출 컬럼에서 제외했다. `raw_to_filtered_reduction_ratio`는 **raw / max(filtered, 1e-6)** 배율로, 제거율(%)과 다르다.
+
+### 분석 산출물 목록
 
 | 산출물 | 내용 |
 | --- | --- |
+| [optical_flow_jul_aug_analysis_data.xlsx](analysis/jul_aug_optical_flow/optical_flow_jul_aug_analysis_data.xlsx) | 배치 요약의 영상·영역·optical flow 핵심 컬럼 및 포함 여부 확인 |
+| [batch_summary_coverage.json](analysis/jul_aug_optical_flow/batch_summary_coverage.json) | 원본 CSV 해시, 파일 집합 대조, 월별 포함 현황, 엑셀 셀 대조 결과 |
+| [report_reference_manifest.json](analysis/jul_aug_optical_flow/report_reference_manifest.json) | 공유용 참고 파일의 원본·사본 경로, 크기와 SHA-256 |
+| [batch_summary_coverage.csv](analysis/jul_aug_optical_flow/tables/batch_summary_coverage.csv) | 원본 13,768개 영상별 배치·프레임·구간 결과·YAML·제외 기록 포함 여부 |
 | [video_summary.csv](analysis/jul_aug_optical_flow/tables/video_summary.csv) | 13,688개 영상별 활동량·방향 균형·변동성 |
 | [frame_video_summary.csv](analysis/jul_aug_optical_flow/tables/frame_video_summary.csv) | 전 프레임 후보 픽셀·component·flux 재집계 |
 | [device.csv](analysis/jul_aug_optical_flow/tables/device.csv) / [hour.csv](analysis/jul_aug_optical_flow/tables/hour.csv) | 기기별 / 시각별 요약 |
@@ -525,7 +546,7 @@ Q1의 통과율은 **35.2%**, Q4는 **86.6%**이다. 양의 flux 영상의 활�
 | [geometry_summary.json](analysis/jul_aug_optical_flow/geometry_summary.json) | 공간 설정 확인 및 각 파생값의 해석 상태 |
 | [normalization_review_cases.csv](analysis/jul_aug_optical_flow/tables/normalization_review_cases.csv) | 합성 flow로 계산한 측정 의미의 반례; 실측 자료와 별도 |
 | [normalization_review.json](analysis/jul_aug_optical_flow/normalization_review.json) | 면적 정규화의 측정 의미 검토와 미검증 가정 |
-| [figures](analysis/jul_aug_optical_flow/figures) | 보고서에 사용한 그림 11개 |
+| [figures](analysis/jul_aug_optical_flow/figures/index.html) | 보고서에 사용한 그림 11개 |
 
 재현 명령은 프로젝트 최상단에서 실행한다. 원본 영상의 optical flow를 다시 계산하지 않는다. 처음 두 단계는 실측 결과의 집계이며, 세 번째 단계는 별도의 합성 flow 개념 계산이다.
 
@@ -533,7 +554,8 @@ Q1의 통과율은 **35.2%**, Q4는 **86.6%**이다. 양의 flux 영상의 활�
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/analyze.py
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/analyze_geometry.py
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/review_normalization_meaning.py
+.venv/bin/python analysis/jul_aug_optical_flow/export_excel.py
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/write_report.py
 ```
 
-분석 스크립트는 기존 프로젝트의 NumPy·Pandas·Matplotlib를 사용한다. Spearman 상관은 결측 쌍을 제외한 뒤 평균 순위의 Pearson 상관으로 계산한다. 0 신호가 아닌 영상의 CV에는 40개 구간의 모집단 표준편차를 사용한다.
+분석 스크립트는 기존 프로젝트의 NumPy·Pandas·Matplotlib를 사용하며, 엑셀 작성은 OpenPyXL을 사용한다. Spearman 상관은 결측 쌍을 제외한 뒤 평균 순위의 Pearson 상관으로 계산한다. 0 신호가 아닌 영상의 CV에는 40개 구간의 모집단 표준편차를 사용한다.

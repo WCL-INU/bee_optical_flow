@@ -1,0 +1,154 @@
+{
+  "files": [
+    {
+      "source": "bee_count_output/yaml_jul_aug_all/batch_summary.csv",
+      "copy": "analysis/jul_aug_optical_flow/references/bee_count_output/yaml_jul_aug_all/batch_summary.csv",
+      "bytes": 10600787,
+      "sha256": "124e4fa094c40a908142d44f2124ca95c5e1da7b39adbc968484aef9ef20e468"
+    },
+    {
+      "source": "bee_count_output/yaml_jul_aug_all/skipped_videos.csv",
+      "copy": "analysis/jul_aug_optical_flow/references/bee_count_output/yaml_jul_aug_all/skipped_videos.csv",
+      "bytes": 21700,
+      "sha256": "ee9f2de481c6e2aa0d6b1570b65cb919ae586bcedc7fc085ea054e3faefd0de2"
+    },
+    {
+      "source": "roi_regions.yaml",
+      "copy": "analysis/jul_aug_optical_flow/references/roi_regions.yaml",
+      "bytes": 6685,
+      "sha256": "6138c3de350eaaca2f8f5901bb9fbbce5e99878266241a1fdf6e2500c6d28d34"
+    },
+    {
+      "source": "analysis/video_features/final/analysis_report.md",
+      "copy": "analysis/jul_aug_optical_flow/references/analysis/video_features/final/analysis_report.md",
+      "bytes": 6608,
+      "sha256": "b3f100608b1267f55e263be63b7455fd21bbedc784314b5302b49574db2815b3"
+    },
+    {
+      "source": "analysis/video_features/final/figures/feature_error_scatter_outliers_iqr.png",
+      "copy": "analysis/jul_aug_optical_flow/references/analysis/video_features/final/figures/feature_error_scatter_outliers_iqr.png",
+      "bytes": 1255391,
+      "sha256": "2396808ab0c11096a990bc8dc69ffbebe41f75596c07d821e97ce44ec9551b39"
+    },
+    {
+      "source": "analysis/video_features/final/figures/low_flow_underprediction_linear_context_chart.png",
+      "copy": "analysis/jul_aug_optical_flow/references/analysis/video_features/final/figures/low_flow_underprediction_linear_context_chart.png",
+      "bytes": 484337,
+      "sha256": "5024525f2bf1e1b3757c059663729dcffb85a53973690ef1ec00cdb6cfae5d84"
+    },
+    {
+      "source": "analysis/video_features/final/figures/low_flow_underprediction_scatter.png",
+      "copy": "analysis/jul_aug_optical_flow/references/analysis/video_features/final/figures/low_flow_underprediction_scatter.png",
+      "bytes": 462605,
+      "sha256": "d8f9156e6caee7ae5043327581e932fc7d275d083b84793049245d67c5c0f728"
+    },
+    {
+      "source": "analysis/video_features/final/figures/representative_feature_error_model_scatter.png",
+      "copy": "analysis/jul_aug_optical_flow/references/analysis/video_features/final/figures/representative_feature_error_model_scatter.png",
+      "bytes": 229482,
+      "sha256": "89fde216b7a4dff64d059f1850abf07f7383e5194cd5f43a9d15fb62698b3a5e"
+    },
+    {
+      "source": "analysis/video_features/final/tables/feature_correlation_groups.csv",
+      "copy": "analysis/jul_aug_optical_flow/references/analysis/video_features/final/tables/feature_correlation_groups.csv",
+      "bytes": 36374,
+      "sha256": "008ad91682007bfe34f18aaf592b9b6588665f266fa974b5a896a4f97128509e"
+    },
+    {
+      "source": "analysis/video_features/final/tables/feature_error_correlations_outliers_iqr.csv",
+      "copy": "analysis/jul_aug_optical_flow/references/analysis/video_features/final/tables/feature_error_correlations_outliers_iqr.csv",
+      "bytes": 758313,
+      "sha256": "23203df14afce9b841f2ecbf3e2e9c82e3623888dc61e3ba61b81b51c7d1fef2"
+    },
+    {
+      "source": "analysis/video_features/final/tables/low_flow_underprediction_feature_correlations.csv",
+      "copy": "analysis/jul_aug_optical_flow/references/analysis/video_features/final/tables/low_flow_underprediction_feature_correlations.csv",
+      "bytes": 259288,
+      "sha256": "c21b7e6f4f3d34602c40dd49b93dba1190fd53fdd5c9b0f2efebae44a07ce3ba"
+    },
+    {
+      "source": "analysis/video_features/final/tables/low_flow_underprediction_linear_context_summary.csv",
+      "copy": "analysis/jul_aug_optical_flow/references/analysis/video_features/final/tables/low_flow_underprediction_linear_context_summary.csv",
+      "bytes": 248,
+      "sha256": "ef6ae9911300f72c5911286bfb93b0a28341141ab23f67eff1728e398f882b24"
+    },
+    {
+      "source": "analysis/video_features/final/tables/low_flow_underprediction_summary.csv",
+      "copy": "analysis/jul_aug_optical_flow/references/analysis/video_features/final/tables/low_flow_underprediction_summary.csv",
+      "bytes": 795,
+      "sha256": "e6628a99fca8fbec2212d30f7ff1d901cbc97fb581297161189ff67feaf4277d"
+    },
+    {
+      "source": "analysis/video_features/final/tables/representative_feature_error_models.csv",
+      "copy": "analysis/jul_aug_optical_flow/references/analysis/video_features/final/tables/representative_feature_error_models.csv",
+      "bytes": 2878,
+      "sha256": "13b89f5f8ab170e264edebac0ba79c9f76d152d681fab21c18b2d1d32203a934"
+    },
+    {
+      "source": "analysis/video_features/final/tables/representative_features.csv",
+      "copy": "analysis/jul_aug_optical_flow/references/analysis/video_features/final/tables/representative_features.csv",
+      "bytes": 15416,
+      "sha256": "ecb516fb6206d2074f157ef4b4bb2e7819c937309cbbaf6acf84a50eacfa8b27"
+    },
+    {
+      "source": "README.md",
+      "copy": "analysis/jul_aug_optical_flow/references/README.md",
+      "bytes": 51337,
+      "sha256": "29d6f64363d689955e7367cd006adb2abd99ee483a9f4e91993a0a4da12d45cd"
+    },
+    {
+      "source": "docs/presentation.md",
+      "copy": "analysis/jul_aug_optical_flow/references/docs/presentation.md",
+      "bytes": 17407,
+      "sha256": "30ca2487ea0666e7c87f9e389cfb89e57ea44f275d552c8081e91f5d8a6e1235"
+    },
+    {
+      "source": "docs/bee_entrance_persistence_filter.md",
+      "copy": "analysis/jul_aug_optical_flow/references/docs/bee_entrance_persistence_filter.md",
+      "bytes": 6262,
+      "sha256": "7c33bf1662670f6d9048aa7deb18881600e0ce30f477e5a55bae932c984c2171"
+    },
+    {
+      "source": "src/bee_entrance_count.py",
+      "copy": "analysis/jul_aug_optical_flow/references/src/bee_entrance_count.py",
+      "bytes": 31324,
+      "sha256": "ae7ac7e05bdae6354c144fc1b8e791d5b3d38107f9953f259fa8d58d09542725"
+    },
+    {
+      "source": "validation/legacy/linear_regression_report.md",
+      "copy": "analysis/jul_aug_optical_flow/references/validation/legacy/linear_regression_report.md",
+      "bytes": 4788,
+      "sha256": "d59f69783c5e7b6f064bbd5db4c241652566a06a79c176ce90ee360b5f3995c3"
+    },
+    {
+      "source": "validation/legacy/linear_regression_stats.csv",
+      "copy": "analysis/jul_aug_optical_flow/references/validation/legacy/linear_regression_stats.csv",
+      "bytes": 1169,
+      "sha256": "e7e884caf76a03d08053bf62a4418338a1e917847770fd0dce7994a7bce60fe8"
+    },
+    {
+      "source": "validation/output/regression_model_comparison.csv",
+      "copy": "analysis/jul_aug_optical_flow/references/validation/output/regression_model_comparison.csv",
+      "bytes": 1691,
+      "sha256": "81185daafeec5a4655882645a3de88802dccc048e962ca1a96040fe0705aceaf"
+    },
+    {
+      "source": "optical_flow_jul_aug_analysis_data.xlsx",
+      "copy": "analysis/jul_aug_optical_flow/optical_flow_jul_aug_analysis_data.xlsx",
+      "bytes": 2751352,
+      "sha256": "4e92b5f74dbc60410f44682942176efd4678db4108db4bbc00f411c9f606a6fc"
+    },
+    {
+      "source": "validation/legacy/plots/in_count.png",
+      "copy": "analysis/jul_aug_optical_flow/references/validation/legacy/plots/in_count.png",
+      "bytes": 108713,
+      "sha256": "1cc240709a586acff45f7cb8ba561a77da2fc8afde7de8f2286c075a0f029b00"
+    },
+    {
+      "source": "validation/legacy/plots/out_count.png",
+      "copy": "analysis/jul_aug_optical_flow/references/validation/legacy/plots/out_count.png",
+      "bytes": 98795,
+      "sha256": "b7d4a971d3d72247def7fa896094f51a2365139d29062b55417d197d72a6f40f"
+    }
+  ]
+}
