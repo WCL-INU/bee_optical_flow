@@ -212,6 +212,25 @@ uv run python -m src.main --mode batch --preset selected --dry-run
 
 `src/vis.py`는 ROI의 optical-flow magnitude를 heatmap으로 겹쳐 저장합니다. `src/vis_arr.py`는 일정 간격의 flow vector를 화살표로 표시해 움직임 방향을 빠르게 확인하는 용도입니다. `src/vis_arr2.py`는 flow 방향을 HSV hue로, 강도를 value로 표현해 전체 flow field의 방향 분포를 확인합니다. `src/sep_blob.py`는 flow magnitude mask에 morphology와 connected component 분석을 적용해 움직임 blob 후보가 어떻게 분리되는지 보는 실험용 스크립트입니다.
 
+## Raspberry Pi 실시간 벤치마크
+
+`src/benchmark_optical_flow.py`는 저장 영상을 최대 속도로 처리하는 `offline` 모드와 원본 FPS에 맞춰 latest-frame queue로 공급하는 `realtime` 모드를 제공합니다. Frame별 단계 지연, deadline miss, drop, CPU frequency, temperature 및 RSS를 기록하고 반복 구간 통계와 그림을 생성합니다.
+
+```powershell
+python -m src.benchmark_optical_flow ^
+  --video-dir videos ^
+  --pattern "*.mp4" ^
+  --modes offline realtime ^
+  --repeats 3 ^
+  --max-frames 600 ^
+  --warmup-pairs 48 ^
+  --stratify-starts ^
+  --opencv-threads 2 ^
+  --output-dir benchmark_results/paper_run
+```
+
+Primary 실시간 판정은 preview를 끈 상태에서 수행합니다. Preview MP4 인코딩 비용을 별도로 측정하려면 `--preview`를 추가합니다. 현재 Raspberry Pi 측정 결과와 방법·한계는 `benchmark_results/paper_20260906/paper_analysis_ko.md`에 정리되어 있습니다.
+
 ## 영상 feature 추출
 
 `src/extract_video_features.py`는 실제 이출입량 같은 참값을 사용하지 않고, 영상 자체에서 측정 가능한 신뢰도/오차 원인 후보 feature를 추출하는 배치 스크립트입니다. 서버에 원본 영상이 있을 때 이 스크립트를 실행하고, 생성된 CSV를 로컬로 가져와 회귀 오차와의 상관관계를 분석하는 용도로 사용합니다.

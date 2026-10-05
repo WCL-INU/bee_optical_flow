@@ -180,6 +180,16 @@ COORDINATE_DEFAULT = "default"
 COORDINATE_AUTO = "auto"
 
 COORDINATE_PRESETS = {
+    "anu25_summer_1": {
+        "video_key": "ANU-25-summer-1",
+        "roi": (450, 970, 1630, 1230),
+        "entrance": (530, 1070, 1580, 1200),
+    },
+    "anu25_summer_6": {
+        "video_key": "ANU-25-summer-6",
+        "roi": (450, 970, 1630, 1230),
+        "entrance": (530, 1070, 1580, 1200),
+    },
     "anu25_summer_3": {
         "video_key": "ANU-25-summer-3",
         "roi": (940, 970, 1310, 1270),
