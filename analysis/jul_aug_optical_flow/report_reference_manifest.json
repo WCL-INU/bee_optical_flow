@@ -133,10 +133,16 @@
       "sha256": "81185daafeec5a4655882645a3de88802dccc048e962ca1a96040fe0705aceaf"
     },
     {
+      "source": "validation/data/merged_data.xlsx",
+      "copy": "analysis/jul_aug_optical_flow/merged_data.xlsx",
+      "bytes": 611268,
+      "sha256": "756589c829d84bb209f8f4b13280e82430b86d6fe32725013263f898e096f6e1"
+    },
+    {
       "source": "optical_flow_jul_aug_analysis_data.xlsx",
       "copy": "analysis/jul_aug_optical_flow/optical_flow_jul_aug_analysis_data.xlsx",
-      "bytes": 2751352,
-      "sha256": "4e92b5f74dbc60410f44682942176efd4678db4108db4bbc00f411c9f606a6fc"
+      "bytes": 3836898,
+      "sha256": "6c5a218ffd6d4382ea0462eef1f7b6a96b3895ced91ff08620d704301f61b0a8"
     },
     {
       "source": "validation/legacy/plots/in_count.png",

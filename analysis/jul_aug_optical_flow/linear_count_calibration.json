@@ -1,0 +1,130 @@
+{
+  "metadata": {
+    "model_source": "validation/output/regression_model_comparison.csv",
+    "model_source_sha256": "81185daafeec5a4655882645a3de88802dccc048e962ca1a96040fe0705aceaf",
+    "training_source": "validation/data/merged_data.xlsx",
+    "training_source_sha256": "756589c829d84bb209f8f4b13280e82430b86d6fe32725013263f898e096f6e1",
+    "training_rows": 3822,
+    "training_start": "2026-03-09 06:00:00",
+    "training_end": "2026-04-14 18:00:00",
+    "training_month_rows": {
+      "3": 2716,
+      "4": 1106
+    },
+    "models": {
+      "in": {
+        "x_col": "total_filtered_in_flux",
+        "y_col": "in",
+        "n": 3822,
+        "slope": 8.66606871153631e-06,
+        "intercept": 6.960286265834714,
+        "r_squared": 0.7728023088072746,
+        "mae": 13.177836206783002,
+        "rmse": 22.13213967338108
+      },
+      "out": {
+        "x_col": "total_filtered_out_flux",
+        "y_col": "out",
+        "n": 3822,
+        "slope": 8.384146127610408e-06,
+        "intercept": 7.17141799056769,
+        "r_squared": 0.7482613655158656,
+        "mae": 14.055432669017417,
+        "rmse": 23.3662865838007
+      }
+    },
+    "count_unit": "model-predicted directional count per analyzed video",
+    "rate_unit": "model-predicted directional count per minute of analyzed video",
+    "intercept_policy": "Apply once per direction per video; preserve the saved intercept.",
+    "rounding_policy": "No rounding or clipping; no area normalization."
+  },
+  "source_csv": "bee_count_output/yaml_jul_aug_all/batch_summary.csv",
+  "source_csv_sha256": "124e4fa094c40a908142d44f2124ca95c5e1da7b39adbc968484aef9ef20e468",
+  "video_rows": 13688,
+  "derived_columns": [
+    "linear_predicted_in_count",
+    "linear_predicted_out_count",
+    "linear_predicted_traffic_count",
+    "linear_predicted_in_count_per_min",
+    "linear_predicted_out_count_per_min",
+    "linear_predicted_traffic_count_per_min"
+  ],
+  "overall": {
+    "n": 13688.0,
+    "duration_sec": 1641989.6666666663,
+    "total_in_count": 1188973.6751724463,
+    "mean_in_count_per_video": 86.86248357484266,
+    "mean_in_count_per_min": 43.44632731773999,
+    "pooled_in_count_per_min": 43.44632731774,
+    "total_out_count": 1160410.8020496354,
+    "mean_out_count_per_video": 84.77577455067471,
+    "mean_out_count_per_min": 42.402610403949836,
+    "pooled_out_count_per_min": 42.40261040394984,
+    "total_traffic_count": 2349384.4772220817,
+    "mean_traffic_count_per_video": 171.63825812551738,
+    "mean_traffic_count_per_min": 85.84893772168982,
+    "pooled_traffic_count_per_min": 85.84893772168985
+  },
+  "monthly": [
+    {
+      "month": 7,
+      "n": 7726,
+      "duration_sec": 926798.083333333,
+      "total_in_count": 729026.5526381677,
+      "mean_in_count_per_video": 94.36015436683508,
+      "mean_in_count_per_min": 47.19646484482199,
+      "pooled_in_count_per_min": 47.196464844822,
+      "total_out_count": 713704.3462161086,
+      "mean_out_count_per_video": 92.37695394979403,
+      "mean_out_count_per_min": 46.204520211081416,
+      "pooled_out_count_per_min": 46.20452021108143,
+      "total_traffic_count": 1442730.8988542764,
+      "mean_traffic_count_per_video": 186.7371083166291,
+      "mean_traffic_count_per_min": 93.40098505590339,
+      "pooled_traffic_count_per_min": 93.40098505590343
+    },
+    {
+      "month": 8,
+      "n": 5962,
+      "duration_sec": 715191.5833333333,
+      "total_in_count": 459947.12253427855,
+      "mean_in_count_per_video": 77.14644792591052,
+      "mean_in_count_per_min": 38.586622095627355,
+      "pooled_in_count_per_min": 38.58662209562736,
+      "total_out_count": 446706.4558335267,
+      "mean_out_count_per_video": 74.92560480267136,
+      "mean_out_count_per_min": 37.475814837042996,
+      "pooled_out_count_per_min": 37.475814837042996,
+      "total_traffic_count": 906653.5783678053,
+      "mean_traffic_count_per_video": 152.07205272858192,
+      "mean_traffic_count_per_min": 76.06243693267037,
+      "pooled_traffic_count_per_min": 76.06243693267037
+    }
+  ],
+  "matched_devices": 19,
+  "matched_cells": 323,
+  "matched_monthly_count_per_min": {
+    "7": {
+      "in": 48.154719869702014,
+      "out": 47.00985579623585,
+      "traffic": 95.16457566593786
+    },
+    "8": {
+      "in": 42.21167076850643,
+      "out": 41.146780852534064,
+      "traffic": 83.35845162104049
+    }
+  },
+  "matched_relative_changes": {
+    "in": -0.12341571329407386,
+    "out": -0.12472012186370607,
+    "traffic": -0.12406007132676289
+  },
+  "checks": {
+    "in_aggregate_abs_error": 0.0,
+    "in_zero_flux_videos": 2375,
+    "out_aggregate_abs_error": 2.3283064365386963e-10,
+    "out_zero_flux_videos": 2379
+  },
+  "figure": "13_linear_predicted_count_hourly_comparison.png"
+}

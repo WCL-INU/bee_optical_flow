@@ -1,4 +1,4 @@
-"""Audit July/August coverage and export selected original batch-summary values."""
+"""Export original July/August flow values plus approved linear-model predictions."""
 from datetime import datetime
 from pathlib import Path
 import hashlib
@@ -15,6 +15,7 @@ from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
+from count_calibration import apply_models, DERIVED_COLUMNS
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -55,6 +56,15 @@ DEFINITIONS.extend([
     ('frame_csv', '결과 파일', '경로', '프레임 쌍별 optical flow 결과 CSV 경로'),
     ('window_csv', '결과 파일', '경로', '3초 구간별 optical flow 결과 CSV 경로'),
 ])
+SOURCE_COLUMNS = [item[0] for item in DEFINITIONS]
+for direction, label in [('in', 'IN'), ('out', 'OUT'), ('traffic', 'IN + OUT')]:
+    expression = ('방향별 기울기 × total_filtered_' + direction + '_flux + 절편'
+                  if direction != 'traffic' else 'linear_predicted_in_count + linear_predicted_out_count')
+    DEFINITIONS.append((f'linear_predicted_{direction}_count', '선형 회귀 추정', '추정 마리/영상',
+                        f'{label} 영상별 추정 마리수: {expression}; 원본 코드의 flux/100 count_est와 구별'))
+for direction, label in [('in', 'IN'), ('out', 'OUT'), ('traffic', 'IN + OUT')]:
+    DEFINITIONS.append((f'linear_predicted_{direction}_count_per_min', '선형 회귀 추정', '추정 마리/분',
+                        f'{label} 분당 추정 마리수 = linear_predicted_{direction}_count / duration_sec × 60'))
 COLUMNS = [item[0] for item in DEFINITIONS]
 FLOW_COLUMNS = [item[0] for item in DEFINITIONS if item[1] == 'Optical flow']
 
@@ -62,7 +72,12 @@ FLOW_COLUMNS = [item[0] for item in DEFINITIONS if item[1] == 'Optical flow']
 def main():
     batch = pd.read_csv(SOURCE, float_precision='round_trip')
     skipped = pd.read_csv(RESULTS / 'skipped_videos.csv')
-    selected = batch[COLUMNS]
+    calibration = json.loads((HERE / 'linear_count_calibration.json').read_text())
+    assert calibration['source_csv_sha256'] == hashlib.sha256(SOURCE.read_bytes()).hexdigest()
+    for key in ['model_source', 'training_source']:
+        assert calibration['metadata'][f'{key}_sha256'] == hashlib.sha256(
+            (ROOT / calibration['metadata'][key]).read_bytes()).hexdigest()
+    selected = apply_models(batch, calibration['metadata'])[COLUMNS]
     summary_names = set(batch.video)
     source_names = {entry.name for entry in os.scandir(ROOT / 'videos')
                     if PATTERN.fullmatch(entry.name) and entry.is_file()}
@@ -122,12 +137,16 @@ def main():
         flow_missing_cells=int(selected[FLOW_COLUMNS].isna().sum().sum()),
         flow_nonfinite_cells=int((~np.isfinite(selected[FLOW_COLUMNS].to_numpy())).sum()),
         geometry_blank_rows=int(selected.roi_x1.isna().sum()), monthly=monthly,
+        original_column_count=len(SOURCE_COLUMNS), derived_columns=DERIVED_COLUMNS,
+        derived_missing_cells=int(selected[DERIVED_COLUMNS].isna().sum().sum()),
+        calibration_metadata=calibration['metadata'],
         excluded_columns=[column for column in batch.columns if column not in COLUMNS],
     )
     assert audit['duplicate_rows'] == 0
     assert source_names == summary_names | skip_names and not summary_names & skip_names
     assert summary_names == eligible == frames == windows
     assert not missing_paths and audit['flow_missing_cells'] == audit['flow_nonfinite_cells'] == 0
+    assert audit['derived_missing_cells'] == 0
     assert batch.video.map(lambda name: bool(PATTERN.fullmatch(name))).all()
 
     wb = Workbook()
@@ -139,9 +158,11 @@ def main():
     for index, definition in enumerate(DEFINITIONS, 1):
         ws.cell(1, index).comment = Comment(f'{definition[1]} | {definition[2]}\n{definition[3]}', 'Column dictionary')
         ws.column_dimensions[get_column_letter(index)].width = 46 if definition[0] == 'video' else (
-            58 if definition[0].endswith('csv') or definition[0] == 'video_path' else 25 if 'flux' in definition[0] else 20)
+            58 if definition[0].endswith('csv') or definition[0] == 'video_path' else
+            34 if definition[0] in DERIVED_COLUMNS else 25 if 'flux' in definition[0] else 20)
         if pd.api.types.is_numeric_dtype(selected[definition[0]]):
-            fmt = '#,##0' if 'flux' not in definition[0] and definition[0] not in ('duration_sec', 'raw_to_filtered_reduction_ratio') else '#,##0.000000'
+            fmt = '#,##0' if 'flux' not in definition[0] and definition[0] not in (
+                'duration_sec', 'raw_to_filtered_reduction_ratio', *DERIVED_COLUMNS) else '#,##0.000000'
             for cells in ws.iter_cols(min_col=index, max_col=index, min_row=2):
                 for cell in cells:
                     cell.number_format = fmt
@@ -152,7 +173,7 @@ def main():
     ws.add_table(data_table)
 
     dictionary = wb.create_sheet('컬럼 설명')
-    dictionary.append(['원본 컬럼', '분류', '단위', '설명', '원본 결측 행 수'])
+    dictionary.append(['컬럼', '분류', '단위', '설명', '결측 행 수'])
     for definition in DEFINITIONS:
         dictionary.append([*definition, int(selected[definition[0]].isna().sum())])
     for index, width in enumerate([44, 20, 16, 110, 20], 1):
@@ -172,9 +193,10 @@ def main():
         ('설명되지 않은 원본 영상', len(source_names - summary_names - skip_names), '원본에서 결과와 제외 기록 양쪽에 없는 영상'),
         ('영상명 중복 행', audit['duplicate_rows'], 'batch_summary.csv 원본 기준'),
         ('핵심 flow 컬럼 결측 셀', audit['flow_missing_cells'], '0 신호도 정상 수치로 유지'),
-        ('추출 컬럼 수', len(COLUMNS), '영상 정보, 영역 좌표, 원래 flux, 결과 CSV 경로'),
+        ('엑셀 컬럼 수', len(COLUMNS), '원본 28개 컬럼 + 선형 모델 추정치 6개 컬럼'),
         ('ROI/ENT 설정 공란 행', audit['geometry_blank_rows'], '원본 CSV 공란을 그대로 보존; 외부 YAML로 채우지 않음'),
-        ('수치 저장', '원본 값', '보정·면적 환산·count_est 추가 없음; Excel 숫자는 약 15자리 정밀도'),
+        ('수치 저장', '원본 + 선형 회귀 추정', '원본 값 보존, 면적 환산 없음; Excel 숫자는 약 15자리 정밀도'),
+        ('추정치 연산', '기울기 × 방향별 flux + 절편', '영상마다 방향별 절편을 한 번 적용; 반올림·클리핑 없음'),
         ('원본 CSV', str(SOURCE.relative_to(ROOT)), '동일 원본의 SHA-256을 아래 기록'),
         ('원본 CSV SHA-256', audit['source_csv_sha256'], '대조한 CSV 파일의 해시'),
     ]
@@ -195,6 +217,28 @@ def main():
     for index, width in enumerate([48, 100, 25, 25, 85], 1):
         skipped_sheet.column_dimensions[get_column_letter(index)].width = width
     skipped_sheet.auto_filter.ref = skipped_sheet.dimensions
+    model_sheet = wb.create_sheet('선형 회귀 모델')
+    model_sheet.append(['방향', '입력 컬럼', '기울기', '절편', '학습 표본', 'R²', '학습 MAE', '학습 RMSE', '예측식'])
+    for direction in ['in', 'out']:
+        model = calibration['metadata']['models'][direction]
+        model_sheet.append([direction.upper(), model['x_col'], model['slope'], model['intercept'], model['n'],
+                            model['r_squared'], model['mae'], model['rmse'],
+                            f"{model['slope']:.17g} × {model['x_col']} + {model['intercept']:.17g}"])
+    model_sheet.append([])
+    for key, label in [('model_source', '계수 출처'), ('model_source_sha256', '계수 CSV SHA-256'),
+                       ('training_source', '학습 자료'), ('training_source_sha256', '학습 자료 SHA-256'),
+                       ('training_start', '학습 시작'), ('training_end', '학습 끝')]:
+        model_sheet.append([label, calibration['metadata'][key]])
+    model_sheet.append(['절편 적용', '영상마다 방향별 1회; flux=0에서도 절편 유지'])
+    model_sheet.append(['합계 추정', 'IN 예측 + OUT 예측'])
+    model_sheet.append(['분당 추정', '영상별 예측 / duration_sec × 60'])
+    model_sheet.append(['수치 정책', '반올림·클리핑·면적 정규화 없음'])
+    for index, width in enumerate([24, 72, 26, 26, 18, 18, 20, 20, 98], 1):
+        model_sheet.column_dimensions[get_column_letter(index)].width = width
+    for row in range(2, 4):
+        model_sheet.cell(row, 3).number_format = '0.000000000000E+00'
+        for col in [4, 6, 7, 8]:
+            model_sheet.cell(row, col).number_format = '0.000000000000'
     for sheet in wb:
         if sheet != ws:
             sheet.freeze_panes = 'A2'
@@ -223,6 +267,8 @@ def main():
                 assert source_value == excel_value
             checked += 1
     assert written['추출 제외 영상'].max_row == len(skipped) + 1
+    assert written['선형 회귀 모델'].cell(2, 5).value == calibration['metadata']['models']['in']['n']
+    assert len(written.sheetnames) == 6
     written.close()
     audit['verified_export_cells'] = checked
     audit['workbook_verified'] = True

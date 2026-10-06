@@ -26,6 +26,9 @@ gm = pd.read_csv(T / "geometry_month_groups.csv")
 meaning = json.loads((HERE / "normalization_review.json").read_text())
 meaning_cases = pd.read_csv(T / "normalization_review_cases.csv")
 coverage = json.loads((HERE / "batch_summary_coverage.json").read_text())
+calibration = json.loads((HERE / "linear_count_calibration.json").read_text())
+count_models = calibration['metadata']['models']
+count_devices = pd.read_csv(T / 'linear_predicted_device_counts.csv')
 d = pd.read_csv(T / "video_summary.csv", parse_dates=["date"])
 device = pd.read_csv(T / "device.csv")
 hour = pd.read_csv(T / "hour.csv")
@@ -155,6 +158,23 @@ meaning_labels=['같은 패치 1개: 좁은 경계','같은 패치 1개: 넓은 
 meaning_rows=[[label,number(r.boundary_pixels),number(r.filtered_flux),number(r.density,6)]
               for label,r in zip(meaning_labels,meaning_cases.itertuples(index=False))]
 
+count_month_rows = []
+for label, row in [(f"{int(row['month'])}월", row) for row in calibration['monthly']] + [('전체', calibration['overall'])]:
+    count_month_rows.append([label, number(row['n'])] +
+        [number(row[f'total_{direction}_count'], 2) for direction in ['in', 'out', 'traffic']] +
+        [number(row[f'mean_{direction}_count_per_min'], 2) for direction in ['in', 'out', 'traffic']])
+count_model_rows = [[direction.upper(), number(model['n']), f"{model['slope']:.12g}",
+                    number(model['intercept'], 9), number(model['r_squared'], 4), number(model['mae'], 2),
+                    number(model['rmse'], 2)] for direction, model in count_models.items()]
+count_device_rows = [[int(row.device), number(row.n), number(row.total_in_count, 2),
+                     number(row.total_out_count, 2), number(row.total_traffic_count, 2),
+                     number(row.mean_traffic_count_per_min, 2)] for row in count_devices.itertuples(index=False)]
+count_matched_rows = [[f'{month}월'] + [number(calibration['matched_monthly_count_per_min'][str(month)][direction], 2)
+                                     for direction in ['in', 'out', 'traffic']] for month in [7, 8]]
+count_matched_rows.append(['8월 / 7월 변화'] + [f"{100 * calibration['matched_relative_changes'][direction]:+.2f}%"
+                                             for direction in ['in', 'out', 'traffic']])
+count_baseline = count_models['in']['intercept'] + count_models['out']['intercept']
+
 geometry_device_section=f"""### 6.2 면적 정규화의 측정 의미 검토
 
 **면적 정규화를 실제 활동량의 보정으로 채택하지 않는다.** 현재 구현은 경계에서 검출된 움직임을 합산하므로, 움직임이 없는 픽셀을 더 포함한다고 flux가 그 면적에 비례해 커지는 구조가 아니다. 보고서의 주 지표는 기존 filtered flux이며, `flux/면적`은 측정 대상이 다른 공간 평균의 참고 통계로만 취급한다.
@@ -252,7 +272,7 @@ ENT 중심은 **29.2–99.4픽셀 이동**했고, 원본 영상 좌표에서의 
 sections = []
 sections.append(f"""# 2026년 7–8월 벌통 입구 Optical Flow 결과 분석 보고서
 
-작성일: 2026-10-05  
+작성일: 2026-10-05 · 회귀 추정치 추가: 2026-10-06  
 분석 대상: `bee_count_output/yaml_jul_aug_all`  
 분석 전제: optical-flow 및 필터 파라미터는 동일하며, ROI/ENT 좌표는 기기와 기간별 설정을 사용한다. 주 지표는 기존 filtered flux이다. 면적 정규화는 측정 의미를 검토한 뒤 공간 평균의 참고 통계로만 남겼다.
 
@@ -268,6 +288,7 @@ sections.append(f"""# 2026년 7–8월 벌통 입구 Optical Flow 결과 분석 
 - 같은 기기·같은 시각의 관측 flux/초 평균은 8월에 **{percent(-s['matched_change'])} 감소**한다. 좌표가 유지된 13개 공통 기기에서도 **19.0% 감소**한다. 이는 관측된 flux의 변화이다.
 - **8·12·13·14·16·18번**은 8월 11일부터 좌표가 바뀐다. 실제 합산 영역 크기와 위치의 변화 및 flux 변화를 7.3–7.5절에서 함께 분석했다.
 - 양의 flux가 있는 영상에서 활동량과 3초 구간 변동계수의 Spearman 상관은 **{s['spearman_rate_cv_positive']:.3f}**이다. 활동량이 클수록 영상 안에서 flux가 지속되는 경향이 강하다.
+- 3·4월 3,822건의 기존 선형 모델로 환산한 IN+OUT 추정 합계는 **7월 {number(calibration['monthly'][0]['total_traffic_count'],2)}마리, 8월 {number(calibration['monthly'][1]['total_traffic_count'],2)}마리**이다. 이는 저장된 영상의 예측값 합계이다. 공통 기기·시각의 분당 추정 합계는 8월에 **{percent(-calibration['matched_relative_changes']['traffic'],2)} 감소**했다. 회귀식과 결과는 13절에 추가했다.
 
 ## 2. 분석 자료와 지표
 
@@ -293,7 +314,7 @@ sections.append(f"""# 2026년 7–8월 벌통 입구 Optical Flow 결과 분석 
 
 분모가 0인 비율과 변동계수는 정의되는 자료만으로 요약했다. 총합 비율은 합계끼리 나눈 flux 가중 비율이고, 영상별 비율의 중앙값은 각 영상을 같은 비중으로 취급한 통계이다. 상위 4구간은 크기순으로 선택하며, 서로 이어진 구간일 필요는 없다.
 
-코드의 `count_est`는 **방향별 flux / 100**으로 저장된다. 이번 보고서에서는 이 값을 flux와 동일한 신호의 환산 지표로 해석하고, 활동량 수치는 원래 flux 단위로 제시한다.
+코드의 `count_est`는 **방향별 flux / 100**으로 저장된다. 이 값은 flux와 동일한 신호의 환산 지표이다. 1–12절의 활동량은 원래 flux 단위로 제시하고, 13절에는 별도의 3·4월 선형 모델로 계산한 추정 마리수를 추가했다.
 
 ## 3. 기존 시스템 자료와의 연결
 
@@ -489,13 +510,45 @@ Q1의 통과율은 **35.2%**, Q4는 **86.6%**이다. 양의 flux 영상의 활�
 
 **면적을 나누면 누적량에서 공간 평균으로 측정 대상이 바뀐다.** 검증되지 않은 면적 비례 가정으로 기기별 활동량 순위나 월별 활동량을 정정하지 않는다. 기본 결과는 기존 flux의 규모·방향·지속성·시간 구조로 기술한다. 기기 간에는 공간 설정 차이를 함께 기록하며, 시간 변화는 동일 기기·동일 좌표 기간의 비교를 우선한다. 좌표가 바뀐 기간의 flux 차이는 설정과 시간 변화가 함께 들어 있는 관측으로 남긴다.
 
+## 13. 3·4월 선형 모델로 환산한 7·8월 추정 마리수
+
+### 13.1 적용한 모델과 계산 단위
+
+[기존 회귀 비교 CSV](validation/output/regression_model_comparison.csv)의 `linear` 모델을 적용했다. [학습 자료](validation/data/merged_data.xlsx)는 **2026년 3월 9일–4월 14일의 3,822건**이며, 3월 2,716건과 4월 1,106건으로 구성된다. 이 자료로 기울기·절편과 학습 MAE·RMSE를 재계산하여 저장된 모델과 일치하는지 확인했다. 초기 500건 서술 보고서 및 legacy 976건 통계의 식과 구분해, 현재 3,822건 모델의 저장된 계수를 사용했다.
+
+{table(['모델','학습 표본','기울기','절편','학습 R²','학습 MAE','학습 RMSE'], count_model_rows)}
+
+영상별 추정치는 `IN = a_in × total_filtered_in_flux + b_in`, `OUT = a_out × total_filtered_out_flux + b_out`, `IN+OUT = IN 예측 + OUT 예측`이다. **영상별 방향 누적 flux에 각 방향의 절편을 한 번씩 적용**하며, 3초 구간 또는 프레임마다 절편을 반복해서 더하지 않는다. 분당 추정치는 `영상별 예측값 / duration_sec × 60`으로 계산한다. 계산에는 CSV의 전체 정밀도 계수를 사용하며 반올림·클리핑·면적 정규화를 적용하지 않았다. 보고서의 소수 자릿수는 표시 형식이다.
+
+flux가 0인 영상에도 IN **{number(count_models['in']['intercept'],4)}**, OUT **{number(count_models['out']['intercept'],4)}**, 합계 **{number(count_baseline,4)}마리/영상**의 예측값이 남는다. 이 값도 원래 회귀식의 일부로 보존했다. 아래 마리수는 모델의 예측값이며, 원본 코드의 `flux/100`인 `count_est`와 별도 지표이다.
+
+### 13.2 월별·기기별 환산 결과
+
+{table(['월','영상 수','IN 추정 합계','OUT 추정 합계','IN+OUT 추정 합계','평균 IN/분','평균 OUT/분','평균 IN+OUT/분'], count_month_rows)}
+
+추정 합계는 **저장된 약 2분 영상들의 예측값 합계**이다. 촬영 사이의 시간을 채운 월 전체의 출입 마리수로 외삽하지 않았다. 분당 평균은 각 영상의 분당 추정치를 평균한 값이며, 모든 영상의 처리 길이가 같아 총 추정치/총 처리 시간으로 계산한 값과도 일치한다.
+
+{table(['기기','영상 수','IN 추정 합계','OUT 추정 합계','IN+OUT 추정 합계','평균 IN+OUT/분'], count_device_rows)}
+
+기기 표의 합계는 각 기기의 7·8월 관측 영상 전체를 더한 값이다. 기기별 표본 수와 공간 설정은 원래 관측 구성을 따르며, 방향별 동일 회귀식으로 값을 환산했다.
+
+### 13.3 공통 기기·시각의 월별 추정 곡선
+
+기존 flux 비교와 같은 **공통 19개 기기 × 05–21시의 17개 시각, 323개 기기·시각**을 사용했다. 영상별 분당 예측값을 기기·월·시각별로 평균한 뒤 각 시각에서 기기에 같은 비중을 주었다.
+
+{table(['비교','IN 추정/분','OUT 추정/분','IN+OUT 추정/분'], count_matched_rows)}
+
+{figure(calibration['figure'], '그림 12. 3·4월 선형 모델을 적용한 공통 기기·시각의 7·8월 IN, OUT, IN+OUT 분당 추정 곡선.')}
+
+공통 기기·시각에서 IN 추정은 **{percent(-calibration['matched_relative_changes']['in'],2)}**, OUT 추정은 **{percent(-calibration['matched_relative_changes']['out'],2)}**, 합계 추정은 **{percent(-calibration['matched_relative_changes']['traffic'],2)} 감소**한다. 합계의 감소율이 원래 flux/초의 13.4% 감소와 다른 것은 **양의 절편을 유지하고 IN·OUT에 서로 다른 기울기를 적용한 결과**이다. 이 차이를 면적 설정에 대한 보정 효과로 해석하지 않는다. 모든 영상의 처리 길이가 같은 이번 자료에서는 방향별 추정 곡선이 해당 방향 flux/초 곡선의 선형 환산 형태를 따른다.
+
 ## 부록. 산출물과 재현
 
 원본 배치 요약과 제외 목록의 공유용 사본은 [원본 요약 자료](bee_count_output/yaml_jul_aug_all)에 있다. 분석 자료와 보고서에서 연결하는 엑셀·기존 문서·그림·설정의 사본은 [analysis/jul_aug_optical_flow](analysis/jul_aug_optical_flow)에 모았다. 보고서의 모든 내부 파일 링크는 이 디렉토리 안의 공유 자료를 가리킨다.
 
 ### batch_summary 포함 여부와 엑셀 자료
 
-프로젝트 최상단에 작성한 [optical_flow_jul_aug_analysis_data.xlsx](optical_flow_jul_aug_analysis_data.xlsx)의 공유용 사본을 분석 디렉토리에도 저장했다. 원본 `batch_summary.csv`의 **{number(coverage['batch_rows'])}행, {coverage['selected_column_count']}개 컬럼**을 추출했다. 영상 파일명·경로·처리 시간·프레임 쌍 수, ROI/ENT 좌표·경계 띠 폭, raw/filtered IN·OUT·traffic flux 합계와 초당 평균, raw/filtered 비율, 프레임·3초 구간 CSV 경로를 수록했다. 영상명 중복과 핵심 flow 컬럼의 결측은 모두 0이다. 엑셀을 다시 열어 {number(coverage['verified_export_cells'])}개 셀을 원본과 대조했다.
+프로젝트 최상단에 작성한 [optical_flow_jul_aug_analysis_data.xlsx](optical_flow_jul_aug_analysis_data.xlsx)의 공유용 사본을 분석 디렉토리에도 저장했다. 엑셀에는 **{number(coverage['batch_rows'])}행, {coverage['selected_column_count']}개 컬럼**이 있으며, 원본에서 추출한 28개 컬럼과 선형 모델 파생값 6개 컬럼으로 구성된다. 원본 컬럼은 영상 파일명·경로·처리 시간·프레임 쌍 수, ROI/ENT 좌표·경계 띠 폭, raw/filtered IN·OUT·traffic flux 합계와 초당 평균, raw/filtered 비율, 프레임·3초 구간 CSV 경로이다. 추가한 컬럼은 `linear_predicted_in_count`, `linear_predicted_out_count`, `linear_predicted_traffic_count`와 각각의 `_per_min` 컬럼이다. 영상명 중복과 핵심 flow·파생값 결측은 모두 0이다. 엑셀을 다시 열어 {number(coverage['verified_export_cells'])}개 셀을 원본 또는 동일 회귀식의 계산 결과와 대조했다.
 
 `videos` 디렉토리의 실제 7–8월 원본 파일명, 현재 ROI YAML의 기기·기간, `skipped_videos.csv`, 프레임·3초 구간 결과 파일 목록 및 배치 요약의 영상명을 대조한 결과는 다음과 같다.
 
@@ -503,7 +556,7 @@ Q1의 통과율은 **35.2%**, Q4는 **86.6%**이다. 양의 flux 영상의 활�
 
 **optical flow를 추출한 {number(coverage['batch_rows'])}개 영상은 모두 `batch_summary.csv`에 존재한다.** 프레임 결과와 3초 구간 결과 각각의 영상명 집합도 배치 요약과 정확히 일치하며, 요약에 기록된 결과 CSV 경로가 모두 실제 파일과 연결된다. 원본 {number(coverage['source_videos'])}개 가운데 요약에 없는 {number(coverage['skipped_videos'])}개는 모두 **2026년 8월 10일의 8·12·13·14·16·18번 기기 영상**이다. 이날은 YAML 기간에 좌표 설정이 없으며, 80개 파일명이 기존 제외 기록과 정확히 일치한다. 따라서 처리 대상 중 요약 누락은 0개이고, 전체 원본 중 80개는 optical flow 미추출 영상이다.
 
-엑셀의 `Optical flow` 시트는 원본 측정값을 그대로 담고, `컬럼 설명`, `포함 여부 확인`, `월별 포함 현황`, `추출 제외 영상` 시트에 정의와 대조 결과를 담았다. 원본의 ROI/ENT 설정 공란 {number(coverage['geometry_blank_rows'])}행은 그대로 보존했다. 면적 정규화 값은 추가하지 않았으며, 기존 flux 환산값인 `count_est`와 전처리·연산 시간 및 공통 알고리즘 설정은 추출 컬럼에서 제외했다. `raw_to_filtered_reduction_ratio`는 **raw / max(filtered, 1e-6)** 배율로, 제거율(%)과 다르다.
+엑셀의 `Optical flow` 시트에는 원본 측정값과 선형 모델 파생값을 담고, `컬럼 설명`, `포함 여부 확인`, `월별 포함 현황`, `추출 제외 영상` 시트에 정의와 대조 결과를 담았다. 추가한 `선형 회귀 모델` 시트에는 전체 정밀도의 계수, 학습 표본과 지표, 출처 및 수치 정책을 기록했다. 원본의 ROI/ENT 설정 공란 {number(coverage['geometry_blank_rows'])}행은 그대로 보존했다. 면적 정규화 값은 추가하지 않았으며, 기존 flux 환산값인 `count_est`와 전처리·연산 시간 및 공통 알고리즘 설정은 추출 컬럼에서 제외했다. `raw_to_filtered_reduction_ratio`는 **raw / max(filtered, 1e-6)** 배율로, 제거율(%)과 다르다.
 
 ### 분석 산출물 목록
 
@@ -533,7 +586,12 @@ Q1의 통과율은 **35.2%**, Q4는 **86.6%**이다. 양의 flux 영상의 활�
 | [geometry_summary.json]({link('geometry_summary.json')}) | 공간 설정 확인 및 각 파생값의 해석 상태 |
 | [normalization_review_cases.csv]({link('tables/normalization_review_cases.csv')}) | 합성 flow로 계산한 측정 의미의 반례; 실측 자료와 별도 |
 | [normalization_review.json]({link('normalization_review.json')}) | 면적 정규화의 측정 의미 검토와 미검증 가정 |
-| [figures]({link('figures')}) | 보고서에 사용한 그림 11개 |
+| [linear_count_calibration.json]({link('linear_count_calibration.json')}) | 적용 계수·학습 출처·월별 추정 합계·공통 기기 비교 및 검증 결과 |
+| [linear_predicted_video_counts.csv]({link('tables/linear_predicted_video_counts.csv')}) | 13,688개 영상의 방향별·합계 추정치와 분당 추정치 |
+| [linear_predicted_month_counts.csv]({link('tables/linear_predicted_month_counts.csv')}) / [linear_predicted_device_counts.csv]({link('tables/linear_predicted_device_counts.csv')}) | 월별 / 기기별 선형 회귀 추정 요약 |
+| [linear_predicted_device_month_counts.csv]({link('tables/linear_predicted_device_month_counts.csv')}) | 기기·월별 선형 회귀 추정 요약 |
+| [linear_predicted_matched_device_hour_counts.csv]({link('tables/linear_predicted_matched_device_hour_counts.csv')}) / [linear_predicted_matched_hourly_counts.csv]({link('tables/linear_predicted_matched_hourly_counts.csv')}) | 공통 기기·시각별 / 시각별 분당 추정치 |
+| [figures]({link('figures')}) | 보고서에 사용한 그림 12개 및 별도로 요청한 3·4·7·8월 비교 그림 |
 
 재현 명령은 프로젝트 최상단에서 실행한다. 원본 영상의 optical flow를 다시 계산하지 않는다. 처음 두 단계는 실측 결과의 집계이며, 세 번째 단계는 별도의 합성 flow 개념 계산이다.
 
@@ -541,6 +599,7 @@ Q1의 통과율은 **35.2%**, Q4는 **86.6%**이다. 양의 flux 영상의 활�
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/analyze.py
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/analyze_geometry.py
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/review_normalization_meaning.py
+MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/count_calibration.py
 .venv/bin/python analysis/jul_aug_optical_flow/export_excel.py
 MPLCONFIGDIR=/tmp/bee_flow_mpl .venv/bin/python analysis/jul_aug_optical_flow/write_report.py
 ```
@@ -628,4 +687,4 @@ tbody tr:nth-child(even){background:#f7f9fb}img{width:100%;height:auto;margin-to
 </style></head><body><main>""" + render(report) + "</main></body></html>"
 (ROOT / f"{REPORT_NAME}.html").write_text(document, encoding="utf-8")
 print(f"Wrote {REPORT_NAME}.md ({len(report):,} characters)")
-print(f"Wrote {REPORT_NAME}.html ({len(document):,} characters; eleven embedded figures)")
+print(f"Wrote {REPORT_NAME}.html ({len(document):,} characters; {document.count('data:image/png;base64,')} embedded figures)")
