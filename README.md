@@ -481,6 +481,44 @@ python -m src.benchmark_optical_flow ^
 
 Primary 실시간 판정은 preview를 끈 상태에서 수행합니다. Preview MP4 인코딩 비용을 별도로 측정하려면 `--preview`를 추가합니다. 현재 Raspberry Pi 측정 결과와 방법·한계는 `benchmark_results/paper_20260906/paper_analysis_ko.md`에 정리되어 있습니다.
 
+### YAML ROI 크기별 Farneback 벤치마크
+
+`src/benchmark_roi_scaling.py`는 `roi_regions.yaml`에서 영상별 ROI를 해석하여 두 실험을 수행합니다. `native`는 모든 영상의 실제 ROI를 비교하고, `controlled`는 같은 장면의 ROI를 여러 크기로 축소하여 장면 차이를 통제한 상태에서 픽셀 수의 영향을 측정합니다. `flow_ms`에는 `cv2.calcOpticalFlowFarneback` 호출만 포함되며 decode, resize, 전처리는 별도 열에 기록됩니다.
+
+```bash
+./.venv/bin/python -m src.benchmark_roi_scaling \
+  --video-dir videos \
+  --roi-yaml roi_regions.yaml \
+  --experiments native controlled \
+  --controlled-device ANU-25-summer-14 \
+  --scales 0.35 0.50 0.65 0.80 1.00 \
+  --segments 3 \
+  --segment-frames 600 \
+  --warmup-pairs 48 \
+  --opencv-threads 2 \
+  --bootstrap-iterations 5000 \
+  --output-dir benchmark_results/roi_scaling_run
+```
+
+결과 디렉토리에는 frame-pair 원시 계측, video×segment×scale 요약, ROI 크기별 집계, 선형/log-log 회귀와 paired-cluster bootstrap 구간, 300 DPI 그림, 실행 환경과 입력 hash, 한국어 분석 보고서가 생성됩니다. 축소 실험은 계산시간의 면적 의존성을 검증하지만, 축소 후 optical-flow 및 counting 정확도 보존은 별도의 정확도 실험이 필요합니다.
+
+가장 큰 YAML ROI의 실제 count 후처리까지 포함한 처리시간을 교차 확인하려면 기존 full-pipeline 벤치마크에도 같은 YAML을 전달합니다.
+
+```bash
+./.venv/bin/python -m src.benchmark_optical_flow \
+  --videos videos/ANU-25-summer-14_20260816_140000.mp4 \
+  --roi-yaml roi_regions.yaml \
+  --modes offline \
+  --repeats 3 \
+  --max-frames 600 \
+  --warmup-pairs 48 \
+  --stratify-starts \
+  --opencv-threads 2 \
+  --output-dir benchmark_results/roi_scaling_run/full_pipeline_crosscheck
+```
+
+교차시험을 ROI 결과 디렉토리 아래에 저장한 뒤 `python -m src.benchmark_roi_scaling --report-only --output-dir benchmark_results/roi_scaling_run`을 실행하면 운용 주기와 열관리 판단까지 포함한 보고서를 다시 생성합니다.
+
 ## 영상 feature 추출
 
 `src/extract_video_features.py`는 실제 이출입량 같은 참값을 사용하지 않고, 영상 자체에서 측정 가능한 신뢰도/오차 원인 후보 feature를 추출하는 배치 스크립트입니다. 서버에 원본 영상이 있을 때 이 스크립트를 실행하고, 생성된 CSV를 로컬로 가져와 회귀 오차와의 상관관계를 분석하는 용도로 사용합니다.

@@ -59,6 +59,7 @@ from src.bee_entrance_count import (
     update_persistence_filter,
 )
 from src.main import PRESETS, find_coordinate_preset, resolve_config_for_video
+from src.roi_batch import resolve_regions
 
 
 FRAME_COLUMNS = [
@@ -1059,12 +1060,15 @@ def write_report(
 
 
 def resolve_config(video: Path, args):
+    config = replace(PRESETS[args.preset], preview_stride=args.preview_stride)
+    if args.roi_yaml:
+        return resolve_config_for_video(video, config, args)
+
     class CoordinateArgs:
         coordinate_preset = "auto"
         roi = None
         entrance = None
 
-    config = replace(PRESETS[args.preset], preview_stride=args.preview_stride)
     return resolve_config_for_video(video, config, CoordinateArgs())
 
 
@@ -1073,6 +1077,11 @@ def parse_args():
     parser.add_argument("--videos", nargs="+", type=Path)
     parser.add_argument("--video-dir", type=Path, default=Path("videos"))
     parser.add_argument("--pattern", default="*.mp4")
+    parser.add_argument(
+        "--roi-yaml",
+        type=Path,
+        help="Resolve each video's ROI and entrance rectangle from YAML.",
+    )
     parser.add_argument(
         "--modes", nargs="+", choices=["offline", "realtime"], default=["offline", "realtime"]
     )
@@ -1114,10 +1123,22 @@ def main():
     if missing:
         raise FileNotFoundError(f"Missing videos: {missing}")
 
+    if args.roi_yaml:
+        args.region_records = resolve_regions(args.roi_yaml, videos, inspect_videos=True)
+        unresolved = [video for video in videos if str(video) not in args.region_records]
+        if unresolved:
+            names = ", ".join(video.name for video in unresolved)
+            raise ValueError(f"Every benchmark video requires one YAML ROI; unresolved: {names}")
+
     args.output_dir.mkdir(parents=True, exist_ok=True)
     cv2.setNumThreads(args.opencv_threads)
     cv2.ocl.setUseOpenCL(False)
     metadata = environment_metadata(args, videos)
+    if args.roi_yaml:
+        metadata["roi_yaml"] = {
+            "path": str(args.roi_yaml.resolve()),
+            "sha256": sha256_file(args.roi_yaml),
+        }
     (args.output_dir / "environment.json").write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2, default=str) + "\n",
         encoding="utf-8",
@@ -1146,10 +1167,14 @@ def main():
     summaries: list[dict] = []
     for index, (mode, video, repeat_index, start_frame) in enumerate(jobs, start=1):
         config = resolve_config(video, args)
-        preset = find_coordinate_preset(video)
+        coordinate_source = (
+            f"{args.roi_yaml}:{args.region_records[str(video)]['start']}"
+            if args.roi_yaml
+            else (find_coordinate_preset(video) or "default")
+        )
         print(
             f"[{index}/{len(jobs)}] mode={mode} repeat={repeat_index} "
-            f"video={video.name} coordinates={preset or 'default'} "
+            f"video={video.name} coordinates={coordinate_source} "
             f"roi={config.roi_x2-config.roi_x1}x{config.roi_y2-config.roi_y1} "
             f"start_frame={start_frame}",
             flush=True,
